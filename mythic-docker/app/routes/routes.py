@@ -362,6 +362,21 @@ async def check_ips(request):
                 return
         return json({"error": "Not Found"}, status=404)
 
+"""
+@mythic.middleware("request")
+async def check_database(request):
+    if not app.db_objects.is_connected:
+        try:
+            logger.info("app.db_objects.is_connected is false in web request")
+            logger.info("closing connection in web request")
+            await app.db_objects.close()
+            logger.info("reopening connection in web request")
+            await app.db_objects.connect()
+            logger.info("connected again in web request")
+        except Exception as e:
+            logger.warning(f"Failed to close/reopen database connection in web: {e}")
+            return json({"error": "got database issue"}, status=500)
+"""
 
 @mythic.middleware("response")
 async def add_cors(request, response):
@@ -373,7 +388,7 @@ async def setup_initial_info(sanic, loop):
     logger.info("setup_initial_info")
     app.db_objects = Manager(mythic_db, loop=loop)
     await mythic_db.connect_async(loop=loop)
-    app.db_objects.database.allow_sync = True  # logging.WARNING
+    app.db_objects.database.set_allow_sync(True) # = False  # logging.WARNING
     await initial_setup()
     asyncio.create_task(app.api.rabbitmq_api.start_listening())
 

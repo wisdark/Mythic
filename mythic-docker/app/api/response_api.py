@@ -243,7 +243,7 @@ async def pop_special_keys(agent_message):
     keys = ["task_id", "completed", "user_output", "file_browser", "upload", "download", "removed_files",
             "total_chunks", "chunk_num", "chunk_data", "credentials", "artifacts", "processes", "tokens",
             "status", "full_path", "file_id", "host", "edges", "commands", "process_response", "keylogs",
-            "logonsessions", "callbacktokens"]
+            "logonsessions", "callback_tokens"]
     agent_copy = agent_message.copy()
     for k in keys:
         agent_copy.pop(k, None)
@@ -473,6 +473,10 @@ async def post_agent_response(agent_message, callback):
                                 task.completed = True
                                 marked_as_complete = True
                                 asyncio.create_task(log_to_siem(mythic_object=task, mythic_source="task_completed"))
+                            elif task.status == "success":
+                                task.status = "completed"
+                                task.completed = True
+                                marked_as_complete = True
                         else:
                             if task.status_timestamp_processed is None:
                                 task.status_timestamp_processed = datetime.datetime.utcnow()
@@ -654,11 +658,11 @@ async def post_agent_response(agent_message, callback):
                             from app.api.rabbitmq_api import response_create_logon_session
                             asyncio.create_task(response_create_logon_session(task, parsed_response["logonsessions"]))
                         parsed_response.pop("logonsessions", None)
-                    if "callbacktokens" in parsed_response:
-                        if isinstance(parsed_response["callbacktokens"], list):
+                    if "callback_tokens" in parsed_response:
+                        if isinstance(parsed_response["callback_tokens"], list):
                             from app.api.rabbitmq_api import response_adjust_callback_tokens
-                            asyncio.create_task(response_adjust_callback_tokens(task, parsed_response["callbacktokens"]))
-                        parsed_response.pop("callbacktokens", None)
+                            asyncio.create_task(response_adjust_callback_tokens(task, parsed_response["callback_tokens"]))
+                        parsed_response.pop("callback_tokens", None)
                     parsed_response.pop("full_path", None)
                     parsed_response.pop("host", None)
                     parsed_response.pop("file_id", None)
@@ -733,34 +737,37 @@ async def move_file_from_agent_to_mythic(parsed_response, task):
             if parsed_response["total_chunks"] is not None and \
                     str(parsed_response["total_chunks"]) != "" and \
                     parsed_response["total_chunks"] >= 0:
-                parsed_response["task"] = task.id
-                if app.debugging_enabled:
-                    await send_all_operations_message(
-                        message=f"Agent sent 'total_chunks' in a response, starting a file 'Download' from agent to Mythic",
-                        level="info", source="debug", operation=task.callback.operation)
-                rsp = await create_filemeta_in_database_func(parsed_response)
-                parsed_response.pop("task", None)
-                if rsp["status"] == "success":
-                    # update the response to indicate we've created the file meta data
-                    rsp.pop("status", None)
-                    #download_data = (
-                    #    js.dumps(
-                    #        rsp,
-                    #        sort_keys=True,
-                    #        indent=2,
-                    #    )
-                    #)
-                    #await app.db_objects.create(
-                    #    Response, task=task, response=download_data
-                    #)
-                    json_return_info = {
-                        **json_return_info,
-                        "file_id": rsp["agent_file_id"],
-                    }
+                if "file_id" in parsed_response and isinstance(parsed_response["file_id"], str) and len(parsed_response["file_id"]) > 0:
+                    pass
                 else:
-                    json_return_info["status"] = "error"
-                    json_return_info["error"] = json_return_info["error"] + " " + rsp[
-                        "error"] if "error" in json_return_info else rsp["error"]
+                    parsed_response["task"] = task.id
+                    if app.debugging_enabled:
+                        await send_all_operations_message(
+                            message=f"Agent sent 'total_chunks' in a response, starting a file 'Download' from agent to Mythic",
+                            level="info", source="debug", operation=task.callback.operation)
+                    rsp = await create_filemeta_in_database_func(parsed_response)
+                    parsed_response.pop("task", None)
+                    if rsp["status"] == "success":
+                        # update the response to indicate we've created the file meta data
+                        rsp.pop("status", None)
+                        #download_data = (
+                        #    js.dumps(
+                        #        rsp,
+                        #        sort_keys=True,
+                        #        indent=2,
+                        #    )
+                        #)
+                        #await app.db_objects.create(
+                        #    Response, task=task, response=download_data
+                        #)
+                        json_return_info = {
+                            **json_return_info,
+                            "file_id": rsp["agent_file_id"],
+                        }
+                    else:
+                        json_return_info["status"] = "error"
+                        json_return_info["error"] = json_return_info["error"] + " " + rsp[
+                            "error"] if "error" in json_return_info else rsp["error"]
             parsed_response.pop("total_chunks", None)
             parsed_response.pop("is_screenshot", None)
         if "chunk_data" in parsed_response:
@@ -1138,10 +1145,10 @@ async def background_process_agent_responses(agent_responses: dict, callback: db
                             if isinstance(parsed_response["logonsessions"], list):
                                 from app.api.rabbitmq_api import response_create_logon_session
                                 await response_create_logon_session(task, parsed_response["logonsessions"])
-                        if "callbacktokens" in parsed_response:
-                            if isinstance(parsed_response["callbacktokens"], list):
+                        if "callback_tokens" in parsed_response:
+                            if isinstance(parsed_response["callback_tokens"], list):
                                 from app.api.rabbitmq_api import response_adjust_callback_tokens
-                                await response_adjust_callback_tokens(task, parsed_response["callbacktokens"])
+                                await response_adjust_callback_tokens(task, parsed_response["callback_tokens"])
                     except Exception as e:
                         asyncio.create_task(
                             send_all_operations_message(message=f"Failed to parse response data:\n{'response_api.py - ' + str(sys.exc_info()[-1].tb_lineno) + ' ' + str(e)}",
