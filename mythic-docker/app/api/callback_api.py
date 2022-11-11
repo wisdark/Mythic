@@ -500,6 +500,11 @@ async def parse_agent_message(data: str, request, profile: str, return_decrypted
                 message=f"Parsing agent message - step 5 (processing message action): \n {decrypted['action']}",
                 level="info", source="debug", operation=enc_key["payload"].operation)
         if decrypted["action"] == "get_tasking":
+            if 'callback' not in enc_key:
+                asyncio.create_task(send_all_operations_message(
+                    message="Error in handling a callback message: Got a 'get_tasking' message with a UUID from a payload or staging agent.\nSomething failed to update in the agent",
+                    level="warning", source="wrong_uuid_in_message", operation=enc_key["payload"].operation))
+                return "", 404, new_callback, agent_uuid
             response_data = await get_agent_tasks(decrypted, enc_key["callback"])
             if "get_delegate_tasks" not in decrypted or decrypted["get_delegate_tasks"] is True:
                 delegates = await get_routable_messages(enc_key["callback"], request)
@@ -552,7 +557,7 @@ async def parse_agent_message(data: str, request, profile: str, return_decrypted
                 if response_data["status"] == "success":
                     new_callback = response_data["id"]
         elif decrypted["action"] == "staging_rsa":
-            response_data, staging_info = await staging_rsa(decrypted, UUID)
+            response_data, staging_info = await staging_rsa(decrypted, enc_key["payload"])
             if staging_info is None:
                 return "", 404, new_callback, agent_uuid
         elif decrypted["action"] == "update_info":
@@ -629,6 +634,7 @@ async def parse_agent_message(data: str, request, profile: str, return_decrypted
                         )
                         response_data["delegates"].append({"message": del_message,
                                                            "mythic_uuid": del_new_callback,
+                                                           "new_uuid": del_new_callback,
                                                            "uuid": d["uuid"]})
                     elif del_uuid != "" and del_uuid != d["uuid"]:
                         # there is no new callback
@@ -649,7 +655,8 @@ async def parse_agent_message(data: str, request, profile: str, return_decrypted
                         )
                         response_data["delegates"].append({"message": del_message,
                                                            "uuid": d["uuid"],
-                                                           "mythic_uuid": del_uuid})
+                                                           "mythic_uuid": del_uuid,
+                                                           "new_uuid": del_uuid})
                     else:
                         # there's no new callback and the delegate message isn't a full callback yet
                         # so just proxy through the UUID since it's in some form of staging
@@ -816,7 +823,7 @@ async def create_callback_func(data, request):
     if "user" not in data:
         data["user"] = ""
     if "host" not in data:
-        data["host"] = ""
+        data["host"] = "UNKNOWN"
     if "pid" not in data:
         data["pid"] = -1
     if "ip" not in data:
@@ -987,6 +994,16 @@ async def create_callback_func(data, request):
             message = message.replace("{description}", cal.description)
             message = message.replace("{operator}", cal.operator.username)
             message = message.replace("{integrity}", int_level)
+            message = message.replace("{host}", cal.host)
+            message = message.replace("{user}", cal.user)
+            message = message.replace("{domain}", cal.domain)
+            message = message.replace("{os}", cal.os)
+            message = message.replace("{arch}", cal.architecture)
+            message = message.replace("{external_ip}", cal.external_ip)
+            message = message.replace("{sleep_info}", cal.sleep_info)
+            message = message.replace("{process_name}", cal.process_name)
+            message = message.replace("{pid}", str(cal.pid))
+            message = message.replace("{extra_info}", cal.extra_info)
             asyncio.create_task(send_webhook_message(cal.operation.webhook, message, cal.operation))
         except Exception as e:
             asyncio.create_task(send_all_operations_message(
@@ -1187,7 +1204,7 @@ async def get_routable_messages(requester, request):
                     }
         # get potentially routable socks data
         for t in socks_callbacks:
-            logger.info(f"len of redis list for SOCKS:{t.id}:ToAgent is {app.redis_pool.llen(f'SOCKS:{t.id}:ToAgent')}")
+            #logger.info(f"len of redis list for SOCKS:{t.id}:ToAgent is {app.redis_pool.llen(f'SOCKS:{t.id}:ToAgent')}")
             if app.redis_pool.llen(f"SOCKS:{t.id}:ToAgent") > 0:
                 try:
                     path = find_path(graph, requester, t, cost_func=cost_func)

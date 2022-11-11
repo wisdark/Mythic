@@ -272,7 +272,18 @@ async def rabbit_pt_callback(message: aio_pika.IncomingMessage):
                     logger.info(f"RABBITMQ GOT CREATE_TASK INFO BACK FROM CONTAINER FOR {pieces[4]} WITH STATUS CODE {pieces[5]}")
                     task = await app.db_objects.get(db_model.task_query, id=pieces[4])
                     logger.debug(response_message)
-
+                    if pieces[5] == "general_error":
+                        task.status = "Error: PreProcessing"
+                        task.completed = True 
+                        await app.db_objects.create(
+                            db_model.Response,
+                            task=task,
+                            response=response_message["message"],
+                        )
+                        await app.db_objects.update(task)
+                        asyncio.create_task(check_and_issue_task_callback_functions(task))
+                        asyncio.create_task(log_to_siem(mythic_object=task, mythic_source="task_new"))
+                        return
                     task.display_params = response_message["task"]["display_params"]
                     task.stdout = response_message["task"]["stdout"]
                     task.stderr = response_message["task"]["stderr"]
@@ -282,15 +293,9 @@ async def rabbit_pt_callback(message: aio_pika.IncomingMessage):
                     task.opsec_pre_blocked = response_message["task"]["opsec_pre_blocked"]
                     task.opsec_pre_message = response_message["task"]["opsec_pre_message"]
                     task.opsec_pre_bypass_role = response_message["task"]["opsec_pre_bypass_role"]
-                    if response_message["task"]["opsec_pre_bypassed"] and response_message["task"][
-                        "opsec_pre_bypass_user"] is None:
-                        task.opsec_pre_bypassed_user = task.operator
                     task.opsec_post_blocked = response_message["task"]["opsec_post_blocked"]
                     task.opsec_post_message = response_message["task"]["opsec_post_message"]
                     task.opsec_post_bypass_role = response_message["task"]["opsec_post_bypass_role"]
-                    if response_message["task"]["opsec_post_bypassed"] and response_message["task"][
-                        "opsec_post_bypass_user"] is None:
-                        task.opsec_post_bypassed_user = task.operator
                     task.completed_callback_function = response_message["task"][
                         "completed_callback_function"] if "completed_callback_function" in response_message[
                         "task"] else None
@@ -388,7 +393,7 @@ async def rabbit_pt_callback(message: aio_pika.IncomingMessage):
                         asyncio.create_task(check_and_issue_task_callback_functions(task))
                         asyncio.create_task(log_to_siem(mythic_object=task, mythic_source="task_new"))
                     else:
-                        if pieces[5] == "success":
+                        if pieces[5] == "success" or pieces[5] == "bypassing opsec_pre":
                             # check if there are subtasks created for this task, if so, this should not go to submitted
                             subtasks = await app.db_objects.count(db_model.task_query.where(
                                 (db_model.Task.parent_task == task) &
@@ -836,6 +841,57 @@ async def get_file(task_id: int = None, callback_id: int = None, filename: str =
             send_all_operations_message(message=f"Failed to get files from task {task_id}: {str(e)}",
                                         level="warning"))
         return {"status": "error", "error": str(e), "response": []}
+
+
+async def get_file_for_wrapper(filename: str = None, file_id: str = None, get_contents: bool = True) -> dict:
+    """
+    Get file data and contents by name (ex: from create_file and a specified saved_file_name parameter).
+    :param filename: The name of the file to search for (Case sensitive)
+    :param file_id: If no filename specified, then can search for a specific file by this UUID
+    :return: A dictionary representing the FileMeta object of the most recent matched file. There is a "contents" key with the base64 representation of the associated file.
+    For an example-
+    resp = await MythicRPC().execute("get_file_for_wrapper", filename="myAssembly.exe")
+    resp.response <--- this is the most recently registered matching file where filename="myAssembly.exe"
+    resp.response["filename"] <-- the filename of that result
+    resp.response["contents"] <--- the base64 contents of that file
+    All of the possible dictionary keys are available at https://github.com/its-a-feature/Mythic/blob/master/mythic-docker/app/database_models/model.py for the FileMeta class
+    """
+    try:
+        finalFile = {}
+        if filename is not None:
+            files = await app.db_objects.execute(
+                db_model.filemeta_query.where(
+                    (db_model.FileMeta.deleted == False)
+                    & (fn.encode(db_model.FileMeta.filename, "escape") ** ("%" + filename + "%"))
+                ).order_by(-db_model.FileMeta.id)
+            )
+            count = 0
+            if len(files) > 0:
+                finalFile = files[0].to_json()
+            else:
+                return {"status": "error", "error": "Failed to match any files by that name"}
+        elif file_id is not None:
+            try:
+                file = await app.db_objects.get(db_model.filemeta_query, agent_file_id=file_id)
+                finalFile = file.to_json()
+            except Exception as d:
+                return {"status": "error", "error": "File does not exist", "response": []}
+        if get_contents:
+            if os.path.exists(finalFile["path"]):
+                finalFile["contents"] = base64.b64encode(open(finalFile["path"], "rb").read()).decode()
+                if len(finalFile["contents"]) > 130000000:
+                    return {"status": "error", "error": "Total size too big for rabbitmq message"}
+            else:
+                finalFile["contents"] = None
+        else:
+            finalFile["contents"] = None
+
+        return {"status": "success", "response": finalFile}
+    except Exception as e:
+        asyncio.create_task(
+            send_all_operations_message(message=f"Failed to get file while building: {str(e)}",
+                                        level="warning"))
+        return {"status": "error", "error": str(e), "response": {}}
 
 
 async def update_file(file_id: str, comment: str = None, delete_after_fetch: bool = None,
@@ -1920,7 +1976,7 @@ async def create_processes(request, task):
             bulk_insert.append(
                 {
                     "task": task,
-                    "host": host,
+                    "host": host if "host" not in p else p["host"].upper(),
                     "timestamp": timestamp,
                     "operation": task.callback.operation,
                     "process_id": p["process_id"],
@@ -2588,6 +2644,21 @@ async def update_loaded_commands(task_id: int, commands: [str], add: bool = None
         return {"status": "error", "error": str(e)}
 
 
+async def create_callback(payload_uuid: str, c2_profile: str, encryption_key: bytes = None, decryption_key: bytes = None, crypto_type: str = None):
+    from app.api.callback_api import create_callback_func
+    from app.api.task_api import update_edges_from_checkin
+    result = await create_callback_func({"uuid": payload_uuid,
+                                         "external_ip": "",
+                                         "enc_key": encryption_key,
+                                         "dec_key": decryption_key,
+                                         "crypto_type": crypto_type}, {})
+    if result["status"] == "success":
+        await update_edges_from_checkin(result["id"], c2_profile)
+        return {"status": "success", "response": result["id"]}
+    else:
+        return result
+
+
 async def create_event_message(message: str, warning: bool = False, task_id: int = None) -> dict:
     """
     Create a message in the Event feed within the UI as an info message or as a warning
@@ -2635,6 +2706,19 @@ async def get_task_for_id(task_id: int, requested_uuid: str = None, requested_id
             return {"status": "success", "response": other_task.to_json()}
         else:
             return {"status": "error", "error": "Failed to find task in current operation"}
+    except Exception as e:
+        return {"status": "error", "error": "Failed to find task: " + str(e)}
+
+
+async def get_callback_info(callback_id: str) -> dict:
+    """
+    Get information about a callback based on the agent_callback_id UUID string.
+    :param callback_id: The Callback UUID you're interested in (i.e. task.callback.id)
+    :return: A dictionary representation of that callback
+    """
+    try:
+        callback = await app.db_objects.get(db_model.callback_query, agent_callback_id=callback_id)
+        return {"status": "success", "response": callback.to_json()}
     except Exception as e:
         return {"status": "error", "error": "Failed to find task: " + str(e)}
 
@@ -2721,6 +2805,16 @@ async def add_command_attack_to_task(task, command):
 async def update_container_status():
     while True:
         try:
+            try:
+                if not app.db_objects.is_connected:
+                    logger.info("app.db_objects.is_connected is false in update_container_status")
+                    await app.db_objects.close()
+                    logger.info("reopening connection in update_container_status")
+                    await app.db_objects.connect()
+                    logger.info("connected again in update_container_status")
+            except Exception as e:
+                logger.warning(f"Failed to reconnect to database in update_container_status, {e}")
+                continue
             profiles = await app.db_objects.execute(db_model.c2profile_query.where(
                 db_model.C2Profile.deleted == False
             ))
@@ -2776,7 +2870,18 @@ async def update_container_status():
 
 
 async def rabbit_heartbeat_callback(message: aio_pika.IncomingMessage):
+
     async with message.process():
+        try:
+            if not app.db_objects.is_connected:
+                logger.info("app.db_objects.is_connected is false")
+                await app.db_objects.close()
+                logger.info("reopening connection")
+                await app.db_objects.connect()
+                logger.info("connected again")
+        except Exception as e:
+            logger.warning(f"Failed to reconnect to database, {e}")
+            return
         pieces = message.routing_key.split(".")
         # print(" [x] %r:%r" % (
         #   message.routing_key,
@@ -2921,10 +3026,14 @@ async def background_agent_response_callback(message: aio_pika.IncomingMessage):
 
 
 # just listen for c2 heartbeats and update the database as necessary
+should_reestablish_rabbitmq = False
+
+
 async def start_listening():
+    global should_reestablish_rabbitmq
     logger.debug("Waiting for RabbitMQ to start..")
     await wait_for_rabbitmq()
-
+    should_reestablish_rabbitmq = True
     logger.debug("Starting to consume rabbitmq messages")
     task = None
     task2 = None
@@ -2991,11 +3100,17 @@ async def mythic_rabbitmq_connection():
 
 
 def closed_connection_callback(exceptionClass, weak, **kwargs):
+    global should_reestablish_rabbitmq
+    global should_reestablish_rabbitmq_background
     args = ""
     args += f"exception: {exceptionClass}\nweak:{weak}\n"
     for k,v in kwargs.items():
         args += f"{k} = {v}\n"
     logger.warning("[-] rabbitmq: " + args)
+    if should_reestablish_rabbitmq:
+        asyncio.create_task(start_listening())
+    if should_reestablish_rabbitmq_background:
+        asyncio.create_task(async_listening_for_background_processing())
 
 
 async def wait_for_rabbitmq():
@@ -3133,8 +3248,12 @@ async def connect_and_consume_heartbeats():
             )
         await asyncio.sleep(2)
 
+should_reestablish_rabbitmq_background = False
+
 
 async def connect_and_consume_background_agent_responses():
+    global should_reestablish_rabbitmq_background
+    should_reestablish_rabbitmq_background = True
     connection = None
     while connection is None:
         try:
@@ -3366,6 +3485,7 @@ exposed_rpc_endpoints = {
     "create_file": create_file,
     "get_file": get_file,
     "get_file_contents": get_file_contents,
+    "get_file_for_wrapper": get_file_for_wrapper,
     "update_file": update_file,
     "get_payload": get_payload,
     "search_payloads": search_payloads,
@@ -3375,6 +3495,7 @@ exposed_rpc_endpoints = {
     "get_commands": get_commands,
     "add_commands_to_payload": add_commands_to_payload,
     "add_commands_to_callback": add_commands_to_callback,
+    "get_callback_info": get_callback_info,
     "create_agentstorage": create_agentstorage,
     "get_agentstorage": get_agentstorage,
     "delete_agentstorage": delete_agentstorage,
@@ -3406,5 +3527,6 @@ exposed_rpc_endpoints = {
     "create_subtask": create_subtask,
     "create_subtask_group": create_subtask_group,
     "create_encrypted_message": encrypt_message,
-    "create_decrypted_message": decrypt_message
+    "create_decrypted_message": decrypt_message,
+    "create_callback": create_callback
 }

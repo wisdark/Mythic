@@ -15,7 +15,7 @@ A cross-platform, post-exploit, red teaming framework built with python3, docker
 
 The Mythic repository itself does not host any Payload Types or any C2 Profiles. Instead, Mythic provides a command, `./mythic-cli install github <url> [branch name] [-f]`, that can be used to install agents into a current Mythic instance.
 
-Payload Types are hosted on the [MythicAgents](https://github.com/MythicAgents) organization and C2 Profiles are hosted on the [MythiC2Profiles](https://github.com/MythicC2Profiles) organization.
+Payload Types are hosted on the [MythicAgents](https://github.com/MythicAgents) organization and C2 Profiles are hosted on the [MythicC2Profiles](https://github.com/MythicC2Profiles) organization.
 
 To install an agent, simply run the script and provide an argument of the path to the agent on GitHub:
 ```bash
@@ -64,6 +64,12 @@ The following people have contributed a lot to the project. As you see their han
 - [@djhohnstein](https://twitter.com/djhohnstein)
 - [@xorrior](https://twitter.com/xorrior)
 - [@Airzero24](https://twitter.com/airzero24)
+
+## Sponsors
+
+Mythic is very fortunate that the following people/corporations have sponsored the continued development efforts of Mythic at the $20+/month rate:
+
+- Matthew Conway (@mattreduce): April 2022 - Present
 
 ## Liability
 
