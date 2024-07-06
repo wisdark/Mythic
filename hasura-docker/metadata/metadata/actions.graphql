@@ -1,0 +1,858 @@
+type Mutation {
+  addAttackToTask(
+    t_num: String!
+    task_display_id: Int!
+  ): addAttackToTaskOutput
+}
+
+type Query {
+  c2GetIOC(
+    uuid: String!
+  ): GetIOCOutput
+}
+
+type Mutation {
+  c2HostFile(
+    c2_id: Int!
+    file_uuid: String!
+    host_url: String!
+  ): c2HostFileOutput
+}
+
+type Query {
+  c2SampleMessage(
+    uuid: String!
+  ): C2SampleMessageOutput
+}
+
+type Query {
+  c2profileListFiles(
+    id: Int!
+  ): c2ProfileListFilesOutput
+}
+
+type Mutation {
+  callbackgraphedge_add(
+    source_id: Int!
+    destination_id: Int!
+    c2profile: String!
+  ): CallbackgraphedgeAddOutput
+}
+
+type Mutation {
+  callbackgraphedge_remove(
+    edge_id: Int!
+  ): CallbackgraphedgeRemoveOutput
+}
+
+type Query {
+  config_check(
+    uuid: String!
+  ): ConfigCheckOutput
+}
+
+type Mutation {
+  consumingServicesTestLog(
+    service_type: String!
+  ): consumingServicesTestLogOutput
+}
+
+type Mutation {
+  consumingServicesTestWebhook(
+    service_type: String!
+  ): consumingServicesTestOutput
+}
+
+type Mutation {
+  createAPIToken(
+    token_type: String!
+  ): createAPITokenResponse!
+}
+
+type Mutation {
+  createCallback(
+    newCallback: newCallbackConfig
+    payloadUuid: String!
+  ): createCallbackOutput
+}
+
+type Mutation {
+  createCredential(
+    realm: String
+    account: String
+    credential: String!
+    comment: String
+    credential_type: String!
+  ): createCredentialOutput
+}
+
+type Mutation {
+  createOperation(
+    name: String
+  ): createOperationOutput
+}
+
+type Mutation {
+  createOperationEventLog(
+    level: String!
+    message: String!
+    source: String
+  ): createOperationEventLogOutput
+}
+
+type Mutation {
+  createOperator(
+    input: OperatorInput!
+  ): OperatorOutput!
+}
+
+type Mutation {
+  createPayload(
+    payloadDefinition: String!
+  ): createPayloadOutput!
+}
+
+type Mutation {
+  createRandom(
+    format_string: String!
+  ): randomOutput
+}
+
+type Mutation {
+  createTask(
+    command: String!
+    params: String!
+    files: [String]
+    callback_id: Int
+    callback_ids: [Int]
+    token_id: Int
+    tasking_location: String
+    original_params: String
+    parameter_group_name: String
+    parent_task_id: Int
+    is_interactive_task: Boolean
+    interactive_task_type: Int
+  ): createTaskOutput
+}
+
+type Mutation {
+  create_c2_instance(
+    c2_instance: String!
+    instance_name: String!
+    c2profile_id: Int!
+  ): createc2instanceOutput
+}
+
+type Mutation {
+  deleteBlockList(
+    name: String!
+  ): deleteBlockListOutput
+}
+
+type Mutation {
+  deleteBlockListEntry(
+    name: String!
+    entries: [Int!]!
+  ): deleteBlockListEntryOutput
+}
+
+type Mutation {
+  deleteFile(
+    file_id: Int!
+  ): deletionOutput
+}
+
+type Mutation {
+  deleteTagtype(
+    id: Int!
+  ): deleteTagtypeOutput
+}
+
+type Mutation {
+  deleteTasksAndCallbacks(
+    tasks: [Int]
+    callbacks: [Int]
+  ): deleteTasksAndCallbacksOutput
+}
+
+type Query {
+  downloadContainerFile(
+    id: Int
+    filename: String!
+  ): ContainerFile
+}
+
+type Mutation {
+  download_bulk(
+    files: [String!]!
+  ): BulkDownloadOutput
+}
+
+type Mutation {
+  dynamic_query_function(
+    command: String!
+    parameter_name: String!
+    payload_type: String!
+    callback: Int!
+  ): dynamicQueryOutput
+}
+
+type Query {
+  exportCallbackConfig(
+    agent_callback_id: String!
+  ): exportCallbackConfigOutput
+}
+
+type Query {
+  export_payload_config(
+    uuid: String!
+  ): PayloadConfig
+}
+
+type Mutation {
+  generateReport(
+    outputFormat: String!
+    includeMITREPerTask: Boolean!
+    includeMITREOverall: Boolean!
+    excludedUsers: String!
+    excludedHosts: String!
+    excludedIDs: String!
+    includeOutput: Boolean!
+  ): generateReportOutput
+}
+
+type Query {
+  getGlobalSettings: globalSettingsOutput
+}
+
+type Query {
+  getOperatorSecrets: getOperatorSecretsOutput
+}
+
+type Query {
+  getProfileOutput(
+    id: Int!
+  ): ProfileOutput
+}
+
+type Mutation {
+  importCallbackConfig(
+    config: jsonb!
+  ): importCallbackConfigOutput
+}
+
+type Mutation {
+  importTagtypes(
+    tagtypes: String!
+  ): importTagtypesOutput
+}
+
+type Query {
+  meHook: meHookOutput
+}
+
+type Mutation {
+  previewFile(
+    file_id: String!
+  ): previewFileOutput
+}
+
+type Mutation {
+  rebuild_payload(
+    uuid: String!
+  ): rebuildOutput
+}
+
+type Query {
+  redirect_rules(
+    uuid: String!
+  ): redirectOutput
+}
+
+type Mutation {
+  reissue_task(
+    task_id: Int!
+  ): ReissueTaskOutput
+}
+
+type Mutation {
+  reissue_task_handler(
+    task_id: Int!
+  ): ReissueTaskHandlerOutput
+}
+
+type Mutation {
+  removeContainerFile(
+    id: Int!
+    filename: String!
+  ): removeContainerFileOutput
+}
+
+type Mutation {
+  requestOpsecBypass(
+    task_id: Int!
+  ): BypassOutput
+}
+
+type Mutation {
+  sendExternalWebhook(
+    webhook_type: String!
+    webhook_data: jsonb!
+  ): sendExternalWebhookOutput
+}
+
+type Mutation {
+  startStopProfile(
+    id: Int!
+    action: String
+  ): startStopOutput
+}
+
+type Mutation {
+  toggleProxy(
+    callbackport_id: Int!
+    action: String!
+  ): toggleProxyOutput
+}
+
+type Mutation {
+  typedarray_parse_function(
+    command: String!
+    parameter_name: String!
+    payload_type: String!
+    callback: Int!
+    input_array: [String!]!
+  ): typedarrayParseOutput
+}
+
+type Mutation {
+  updateCallback(
+    input: updateCallbackInput!
+  ): updateCallbackOutput
+}
+
+type Mutation {
+  updateCurrentOperation(
+    user_id: Int!
+    operation_id: Int!
+  ): updateCurrentOperationOutput
+}
+
+type Mutation {
+  updateGlobalSettings(
+    settings: jsonb!
+  ): updateGlobalSettingsOutput
+}
+
+type Mutation {
+  updateOperation(
+    operation_id: Int!
+    name: String
+    channel: String
+    complete: Boolean
+    webhook: String
+    admin_id: Int
+    deleted: Boolean
+  ): updateOperationOutput
+}
+
+type Mutation {
+  updateOperatorOperation(
+    operation_id: Int!
+    add_users: [Int]
+    remove_users: [Int]
+    view_mode_operators: [Int]
+    view_mode_spectators: [Int]
+    disabled_command_map: [disabledCommand]
+  ): updateOperatorOperationOutput
+}
+
+type Mutation {
+  updateOperatorSecrets(
+    secrets: jsonb!
+  ): updateOperatorSecretsOutput
+}
+
+type Mutation {
+  updateOperatorStatus(
+    operator_id: Int!
+    active: Boolean
+    admin: Boolean
+    deleted: Boolean
+  ): updateOperatorStatusOutput
+}
+
+type Mutation {
+  updatePassword(
+    user_id: Int!
+    new_password: String!
+    old_password: String
+  ): passwordUpdateOutput
+}
+
+type Mutation {
+  uploadContainerFile(
+    id: Int!
+    file_path: String!
+    data: String!
+  ): uploadContainerOutput
+}
+
+input OperatorInput {
+  username: String!
+  password: String!
+}
+
+input CreatePayloadInput {
+  input_string: String!
+}
+
+input updateCallbackInput {
+  callback_display_id: Int
+  callback_display_ids: [Int]
+  active: Boolean
+  locked: Boolean
+  description: String
+  ips: [String]
+  host: String
+  user: String
+  os: String
+  architecture: String
+  extra_info: String
+  sleep_info: String
+  pid: Int
+  process_name: String
+  integrity_level: Int
+  domain: String
+}
+
+input DictionaryEntry {
+  key: String!
+  value: String!
+}
+
+input tagtypeInput {
+  name: String!
+  color: String!
+  description: String!
+}
+
+input NewCallbackConfig {
+  ip: String
+  externalIp: String
+  user: String
+  host: String
+  domain: String
+  description: String
+  processName: String
+  sleepInfo: String
+  extraInfo: String
+}
+
+input newCallbackConfig {
+  ip: String
+  externalIp: String
+  user: String
+  host: String
+  domain: String
+  description: String
+  processName: String
+  sleepInfo: String
+  extraInfo: String
+}
+
+input disabledCommand {
+  user_id: Int!
+  disabled_command_profile_id: Int!
+}
+
+type createAPITokenResponse {
+  token_value: String
+  status: String!
+  error: String
+  id: Int
+  operator_id: Int
+}
+
+type OperatorOutput {
+  username: String
+  id: Int
+  active: Boolean
+  view_utc_time: Boolean
+  creation_time: String
+  last_login: String
+  deleted: Boolean
+  status: String!
+  error: String
+  admin: Boolean
+  current_operation: String
+  current_operation_id: Int
+  ui_config: String
+  failed_login_count: Int
+  last_failed_login_timestamp: String
+}
+
+type createPayloadOutput {
+  status: String!
+  error: String
+  uuid: String
+}
+
+type randomOutput {
+  status: String!
+  error: String
+  random: String
+}
+
+type startStopOutput {
+  status: String!
+  error: String
+  output: String
+  version: String
+}
+
+type ProfileOutput {
+  status: String!
+  error: String
+  output: String
+  version: String
+}
+
+type ContainerFile {
+  status: String!
+  filename: String
+  data: String
+  error: String
+  version: String
+}
+
+type uploadContainerOutput {
+  status: String!
+  error: String
+  filename: String
+  version: String
+}
+
+type SampleOutput {
+  status: String!
+  error: String
+  id: Int
+}
+
+type createTaskOutput {
+  status: String!
+  error: String
+  id: Int
+  display_id: Int
+}
+
+type BypassOutput {
+  status: String!
+  error: String
+}
+
+type updateCallbackOutput {
+  status: String!
+  error: String
+}
+
+type BulkDownloadOutput {
+  status: String!
+  error: String
+  file_id: String
+}
+
+type dynamicQueryOutput {
+  status: String!
+  error: String
+  choices: [String]
+}
+
+type rebuildOutput {
+  status: String!
+  error: String
+  uuid: String
+}
+
+type redirectOutput {
+  status: String!
+  error: String
+  output: String
+}
+
+type ConfigCheckOutput {
+  status: String!
+  error: String
+  output: String
+}
+
+type createc2instanceOutput {
+  status: String!
+  error: String
+}
+
+type PayloadConfig {
+  config: String
+  status: String!
+  error: String
+}
+
+type ReissueTaskOutput {
+  status: String!
+  error: String
+}
+
+type ReissueTaskHandlerOutput {
+  status: String!
+  error: String
+}
+
+type StopSocksOutput {
+  status: String!
+  error: String
+}
+
+type deletionOutput {
+  status: String!
+  error: String
+  file_ids: [Int]
+  payload_ids: [Int]
+}
+
+type passwordUpdateOutput {
+  status: String!
+  error: String
+}
+
+type updateCurrentOperationOutput {
+  status: String!
+  error: String
+  operation_id: Int
+}
+
+type deleteBlockListOutput {
+  status: String!
+  error: String
+  name: String
+}
+
+type deleteBlockListEntryOutput {
+  status: String!
+  error: String
+  name: String
+  deleted_ids: [Int]
+}
+
+type createOperationOutput {
+  operation_id: Int
+  operation_name: String
+  status: String!
+  error: String
+}
+
+type generateReportOutput {
+  status: String!
+  error: String
+}
+
+type previewFileOutput {
+  status: String!
+  error: String
+  contents: String
+}
+
+type meHookOutput {
+  status: String!
+  error: String
+  current_operation_id: Int
+  current_operation: String
+}
+
+type deleteTasksAndCallbacksOutput {
+  status: String!
+  error: String
+  failed_tasks: [Int]
+  failed_callbacks: [Int]
+}
+
+type sendExternalWebhookOutput {
+  status: String!
+  error: String
+}
+
+type deleteTagtypeOutput {
+  status: String!
+  error: String
+  tagtype_id: Int!
+}
+
+type importTagtypesOutput {
+  status: String!
+  error: String
+}
+
+type CallbackgraphedgeAddOutput {
+  status: String!
+  error: String
+}
+
+type CallbackgraphedgeRemoveOutput {
+  status: String!
+  error: String
+}
+
+type createCallbackOutput {
+  status: String!
+  error: String
+}
+
+type consumingServicesOutput {
+  status: String!
+  error: String
+  newcallback_logging_services_count: Int
+  newcredential_logging_services_count: Int
+  newfileupload_logging_services_count: Int
+  newfiledownload_logging_services_count: Int
+  newartifact_logging_services_count: Int
+  newtask_logging_services_count: Int
+  newscreenshot_logging_services_count: Int
+  newpayload_logging_services_count: Int
+  newkeylog_logging_services_count: Int
+  newcallback_webhook_services_count: Int
+  newfeedback_webhook_services_count: Int
+  newstartup_webhook_services_count: Int
+}
+
+type consumingServicesTestOutput {
+  status: String!
+  error: String
+}
+
+type consumingServicesTestLogOutput {
+  status: String!
+  error: String
+}
+
+type c2ProfileListFilesOutput {
+  status: String!
+  error: String
+  files: [String]
+}
+
+type removeContainerFileOutput {
+  status: String!
+  error: String
+}
+
+type addAttackToTaskOutput {
+  status: String!
+  error: String
+}
+
+type updateOperationOutput {
+  status: String!
+  error: String
+  name: String
+  channel: String
+  complete: Boolean
+  webhook: String
+  admin_id: Int
+  deleted: Boolean
+  id: Int
+}
+
+type updateOperatorOperationOutput {
+  status: String!
+  error: String
+}
+
+type createCredentialOutput {
+  status: String!
+  error: String
+  id: Int
+}
+
+type createOperationEventLogOutput {
+  status: String!
+  error: String
+}
+
+type GetIOCOutput {
+  status: String!
+  error: String
+  output: String
+}
+
+type C2SampleMessageOutput {
+  status: String!
+  error: String
+  output: String
+}
+
+type consumingServicesListOutput {
+  webhooks: jsonb
+  loggers: jsonb
+}
+
+type c2HostFileOutput {
+  status: String!
+  error: String
+}
+
+type typedarrayParseOutput {
+  status: String!
+  error: String
+  typed_array: jsonb
+}
+
+type ToggleProxyOutput {
+  status: String!
+  action: String!
+  error: String
+}
+
+type toggleProxyOutput {
+  status: String!
+  error: String
+}
+
+type updateOperatorStatusOutput {
+  status: String!
+  error: String
+  id: Int
+  admin: Boolean
+  active: Boolean
+  deleted: Boolean
+}
+
+type updateGlobalSettingsOutput {
+  status: String!
+  error: String
+}
+
+type globalSettingsOutput {
+  settings: jsonb!
+}
+
+type exportCallbackConfigOutput {
+  status: String!
+  error: String
+  config: String
+}
+
+type importCallbackConfigOutput {
+  status: String!
+  error: String
+}
+
+type getOperatorSecretsOutput {
+  status: String!
+  error: String
+  secrets: jsonb
+}
+
+type updateOperatorSecretsOutput {
+  status: String!
+  error: String
+}
+

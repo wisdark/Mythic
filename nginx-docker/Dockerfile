@@ -1,1 +1,1 @@
-FROM nginx:1.21.4-alpine
+FROM ghcr.io/its-a-feature/mythic_nginx:v0.0.3.53
