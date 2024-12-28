@@ -1,6 +1,6 @@
 import React from 'react';
 import Paper from '@mui/material/Paper';
-import { useQuery, gql} from '@apollo/client';
+import { useLazyQuery, gql} from '@apollo/client';
 import { PieChart, pieArcLabelClasses } from '@mui/x-charts/PieChart';
 import {useTheme} from '@mui/material/styles';
 import { useDrawingArea } from '@mui/x-charts/hooks';
@@ -20,7 +20,7 @@ import MythicTableCell from "../../MythicComponents/MythicTableCell";
 import {useNavigate} from 'react-router-dom';
 import { BarChart } from '@mui/x-charts/BarChart';
 import {getStringSize} from "../Callbacks/ResponseDisplayTable";
-import {toLocalTime} from "../../utilities/Time";
+import {getSkewedNow, useInterval} from "../../utilities/Time";
 
 const GetCallbacks = gql`
 query GetCallbacks {
@@ -106,7 +106,6 @@ function getTaskStatusNormalized (taskStatus) {
     if(status.includes("opsec")){
         return "opsec"
     }
-    console.log(status);
     return "submitted"
 
 
@@ -147,6 +146,7 @@ const errorColors = [
 ]
 export function CallbacksCard({me}) {
     const theme = useTheme();
+    const mountedRef = React.useRef(true);
     const navigate = useNavigate();
     const [active, setActive] = React.useState({"active": 0, "recent": 0, "total": 0});
     const [tags, setTags] = React.useState([]);
@@ -199,11 +199,11 @@ export function CallbacksCard({me}) {
         }
 
     }
-    useQuery(GetCallbacks, {fetchPolicy: "network-only",
+    const [fetchData] = useLazyQuery(GetCallbacks, {fetchPolicy: "network-only",
         onCompleted: (data) => {
             let callbackData = {};
             let recent = 0;
-            let now = new Date();
+            let now = getSkewedNow();
             // proces active status
             const newActive = data.callback.reduce( (prev, cur) => {
                 if(!callbackData[cur.id]){
@@ -599,6 +599,13 @@ export function CallbacksCard({me}) {
 
         }
     });
+    React.useEffect( () => {
+        fetchData();
+    }, []);
+    useInterval( () => {
+        // interval should run every 1 minutes (60000 milliseconds) to check JWT status
+        fetchData();
+    }, 60000, mountedRef, mountedRef);
     return (
         <>
             <div style={{display: "flex"}}>
@@ -1008,7 +1015,7 @@ const LineTimeMultiChartCard = ({data, additionalStyles, colors=cheerfulFiestaPa
     return (
         <Paper elevation={5} style={{
             marginBottom: "5px",
-            marginTop: "10px",
+            marginTop: "5px",
             width: "100%",
             height: "100%",
             border: "1px solid gray",
@@ -1022,7 +1029,6 @@ const LineTimeMultiChartCard = ({data, additionalStyles, colors=cheerfulFiestaPa
                 xAxis={[
                     {
                         data: data.x,
-                        //valueFormatter: (v) => tooltipDate(v, view_utc_time),
                         scaleType: "time",
                         min: data?.x?.[value[0]] || 0,
                         max: data?.x?.[value[1]] || 0,

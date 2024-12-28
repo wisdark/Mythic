@@ -5,7 +5,7 @@ import {BrowserRouter as Router} from 'react-router-dom'
 import { ApolloProvider, ApolloClient, InMemoryCache, from, split, HttpLink } from '@apollo/client';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
-import { successfulRefresh, FailedRefresh} from './cache';
+import {successfulRefresh, FailedRefresh, successfulLogin} from './cache';
 import { onError } from "@apollo/client/link/error";
 import { RetryLink } from "@apollo/client/link/retry";
 import { getMainDefinition } from '@apollo/client/utilities'
@@ -13,9 +13,9 @@ import { setContext } from '@apollo/client/link/context';
 import {snackActions} from './components/utilities/Snackbar';
 import jwt_decode from 'jwt-decode';
 import {meState} from './cache';
+import {getSkewedNow} from "./components/utilities/Time";
 
-export const mythicVersion = "3.2.20-rc7";
-export const mythicUIVersion = "0.1.86";
+export const mythicUIVersion = "0.2.70";
 
 let fetchingNewToken = false;
 
@@ -59,11 +59,37 @@ let httpLink = new HttpLink({
 });
 export const isJWTValid = () => {
   let access_token = localStorage.getItem("access_token");
+  if(!access_token){
+      let cookie = document.cookie;
+      if(cookie && cookie !== ""){
+          let cookiePieces = cookie.split("=")
+          if(cookiePieces.length !== 2){
+              console.log("bad number of cookie pieces", "cookie", cookie)
+          } else if(cookiePieces[0] !== "user") {
+              console.log("unknown cookie", "name", cookiePieces[0]);
+          } else {
+              try{
+                  let cookieString = decodeURIComponent(cookiePieces[1]);
+                  let cookieJSON = JSON.parse(atob(cookieString));
+                  if("access_token" in cookieJSON){
+                      successfulLogin(cookieJSON);
+                      restartWebsockets();
+                      access_token = localStorage.getItem("access_token");
+                  }else{
+                      snackActions.warning("Invalid Authentication");
+                      console.log("Error", cookieJSON);
+                  }
+              }catch(error){
+                  console.log("error processing cookie value", error)
+              }
+          }
+      }
+  }
   //console.log("in isJWTValid", "access_token", access_token);
   if(access_token){
     const decoded_token = jwt_decode(access_token);
-    if(Date.now() > decoded_token.exp * 1000){
-      //console.log("exp is expired: ", decoded_token.exp * 1000, Date.now())
+    if(getSkewedNow().getTime() > decoded_token.exp * 1000){
+      console.log("exp is expired: ", decoded_token.exp * 1000, getSkewedNow().getTime())
       return false;
     }else{
       return true;
@@ -77,7 +103,7 @@ export const JWTTimeLeft = () => {
   //console.log("in isJWTValid", "access_token", access_token);
   if(access_token){
     const decoded_token = jwt_decode(access_token);
-    return (decoded_token.exp * 1000) - Date.now();
+    return (decoded_token.exp * 1000) - getSkewedNow();
   }else{
     return 0;
   }
@@ -94,7 +120,7 @@ const authLink = setContext( async (_, {headers}) => {
       const decoded_token = jwt_decode(access_token);
       //console.log(decoded_token);
       // JWT lifetime is 4 hours. If there's 2hrs or less left of the JWT, update it
-      let diff = (decoded_token.exp * 1000) - Date.now();
+      let diff = (decoded_token.exp * 1000) - getSkewedNow();
       let twoHours = 7200000; // 2 hours in miliseconds, this is half the JWT lifetime
       // we want to make sure we try to get a new access_token while the current one is still active or it'll fail
       if(!isJWTValid()){
@@ -112,7 +138,7 @@ const authLink = setContext( async (_, {headers}) => {
               console.log("JWT is no longer valid and failed to get new tokens");
               FailedRefresh();
           }
-      } else if(diff < twoHours){
+      } else if(diff < twoHours && diff > 0){
           console.log("token is at its half life or less, try to get a new token");
           const updated = await GetNewToken();
           //console.log("updated?", updated);
@@ -181,6 +207,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
     }
     if (networkError) {
       console.log("[Network error]", networkError);
+      console.log(networkError.extensions, networkError.message);
       
       if(networkError.extensions === undefined){
         snackActions.error("Failed to connect to Mythic, please refresh");
@@ -295,12 +322,14 @@ export const apolloClient = new ApolloClient({
     cache
   });
 export function restartWebsockets () {
+    console.log("restarting websockets");
     wsClient.dispose();
 }
   // if the user refreshes the page, we lose all react tracking, so try to reload from localstorage first
 if(localStorage.getItem("access_token") !== null){
   if(isJWTValid(localStorage.getItem("access_token"))){
       if(localStorage.getItem("user") !== null){
+          console.log("loading meState from localStorage")
           meState({
               loggedIn: true,
               access_token: localStorage.getItem("access_token"),

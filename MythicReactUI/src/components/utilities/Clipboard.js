@@ -1,7 +1,8 @@
 export function copyStringToClipboard(str) {
+    let el = document.createElement('textarea');
     try {
         // Create new element
-        let el = document.createElement('textarea');
+
         // Set value (string to be copied)
         el.value = str;
         if(el.value === ""){
@@ -14,11 +15,20 @@ export function copyStringToClipboard(str) {
         // Select text inside element
         el.select();
         // Copy text to clipboard
-        document.execCommand('copy');
+        let success = document.execCommand('copy');
+        if(!success){
+            console.log("failed to copy data");
+        }
+        success = document.execCommand('cut');
+        if(!success){
+            console.log("failed to cut data");
+        }
+        navigator?.clipboard?.writeText(el.value);
         // Remove temporary element
         document.body.removeChild(el);
         return true;
     } catch (error) {
+        document.body.removeChild(el);
         console.log("warning", "Failed to copy to clipboard: " + error.toString());
         return false;
     }

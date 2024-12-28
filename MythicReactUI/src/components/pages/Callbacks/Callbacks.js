@@ -51,13 +51,40 @@ const StyledSpeedDial = styled(SpeedDial)(({theme}) => ({
         color: theme.palette.background.contrast,
     }
 }));
-
+export const getCallbackIdFromClickedTab = (tabId) => {
+    if(tabId === null || tabId === undefined){return 0}
+    if(tabId === ""){return 0}
+    if(tabId.includes("fileBrowser")) {
+        return Number(tabId.split("fileBrowser")[0]);
+    }else if(tabId.includes("interact")){
+        return Number(tabId.split("interact")[0]);
+    }else if(tabId.includes("processBrowser")){
+        return Number(tabId.split("processBrowser")[0]);
+    } else {
+        console.log("unknown tab type", tabId);
+        return 0;
+    }
+}
 
 export function Callbacks({me}) {
     const [topDisplay, setTopDisplay] = React.useState('table');
     const [openTabs, setOpenTabs] = React.useState([]);
-    const [clickedTabId, setClickedTabId] = React.useState('');
+    const [clickedTabId, setClickedTabIdValue] = React.useState('');
     const openTabRef = React.useRef([]);
+    const callbackTableGridRef = React.useRef();
+    const [callbackTableSplitSizes, setCallbackTableSplitSizes] = React.useState([30, 70]);
+    const setClickedTabId = (tabID) => {
+        if(callbackTableGridRef.current){
+            let tabIDNumber = getCallbackIdFromClickedTab(tabID);
+            let rowIndex = callbackTableGridRef.current?.props?.itemData?.items?.findIndex((e) => {
+                return e[0]?.props?.rowData?.id === tabIDNumber
+            });
+            if(rowIndex >= 0){
+                callbackTableGridRef.current?.scrollToItem({rowIndex: rowIndex, align: "end", columnIndex: 0})
+            }
+        }
+        setClickedTabIdValue(tabID);
+    }
     useEffect(() => {
         const oldTabs = localStorage.getItem('openTabs');
         if (oldTabs !== undefined && oldTabs !== null) {
@@ -72,12 +99,26 @@ export function Callbacks({me}) {
                 console.log('failed to parse oldTabs', error);
             }
         }
+        const oldSizes = localStorage.getItem("callbackTableSplitSizes");
+        if (oldSizes) {
+            try{
+                setCallbackTableSplitSizes(JSON.parse(oldSizes));
+            }catch(error){
+                console.log("failed to parse callback table split sizes");
+            }
+        }
     }, []);
     useEffect( () => {
         openTabRef.current = openTabs;
     }, [openTabs])
     const onOpenTab = React.useRef( (tabData) => {
         let found = false;
+        openTabRef.current = openTabRef.current.map( (tab) => {
+            if(tab.tabID === tabData.tabID){
+                return {...tabData};
+            }
+            return {...tab};
+        })
         openTabRef.current.forEach((tab) => {
             if (tab.tabID === tabData.tabID) found = true;
         });
@@ -86,10 +127,29 @@ export function Callbacks({me}) {
             const tabs = [...openTabRef.current, { ...tabData }];
             localStorage.setItem('openTabs', JSON.stringify(tabs));
             setOpenTabs(tabs);
+        } else {
+            setOpenTabs([...openTabRef.current]);
         }
         localStorage.setItem('clickedTab', tabData.tabID);
         setClickedTabId(tabData.tabID);
         
+    });
+    const onOpenTabs = React.useRef( (tabData) => {
+        let currentTabs = [...openTabRef.current];
+        for(let i = 0; i < tabData.length; i++){
+            let found = false;
+            currentTabs.forEach((tab) => {
+                if (tab.tabID === tabData[i].tabID) found = true;
+            });
+            if (!found) {
+                currentTabs = [...currentTabs, { ...tabData[i] }];
+            }
+        }
+        localStorage.setItem('openTabs', JSON.stringify(currentTabs));
+        setOpenTabs(currentTabs);
+        localStorage.setItem('clickedTab', tabData[0].tabID);
+        setClickedTabId(tabData[0].tabID);
+
     });
     const onEditTabDescription = React.useCallback( (tabInfo, description) => {
         const tabs = openTabs.map((t) => {
@@ -108,6 +168,10 @@ export function Callbacks({me}) {
         });
         localStorage.setItem('openTabs', JSON.stringify(tabSet));
         setOpenTabs(tabSet);
+        if(tabSet.length === 0){
+            setClickedTabId("0");
+            localStorage.removeItem("clickedTab");
+        }
     }, [openTabs]);
     const onDragTab = ({selected, toLeftOf}) => {
         //console.log("onDragTab in CallbacksTabs", selected, toLeftOf);
@@ -172,9 +236,18 @@ export function Callbacks({me}) {
     return (
         <>
             <SpeedDialWrapper setTopDisplay={setTopDisplay} />
-            <Split direction="vertical" sizes={[30, 70]} minSize={[0,0]} style={{ height: "100%" }}>
+            <Split direction="vertical"
+                   sizes={callbackTableSplitSizes}
+                   minSize={[0,0]}
+                   onDragEnd={(sizes) => localStorage.setItem('callbackTableSplitSizes', JSON.stringify(sizes))}
+                   style={{ height: "100%" }}>
                 <div className="bg-gray-base">
-                    <CallbacksTop topDisplay={topDisplay} onOpenTab={onOpenTab.current} me={me}/>
+                    <CallbacksTop
+                        callbackTableGridRef={callbackTableGridRef}
+                        topDisplay={topDisplay}
+                        onOpenTab={onOpenTab.current}
+                        onOpenTabs={onOpenTabs.current}
+                        me={me} clickedTabId={clickedTabId}/>
                 </div>
                 <div className="bg-gray-mid">
                     <CallbacksTabs
@@ -182,6 +255,7 @@ export function Callbacks({me}) {
                         onEditTabDescription={onEditTabDescription}
                         key={'callbackstabs'}
                         clickedTabId={clickedTabId}
+                        setClickedTabId={setClickedTabId}
                         openTabs={openTabs}
                         onDragTab={onDragTab}
                         me={me}
@@ -264,18 +338,23 @@ function SpeedDialWrapperPreMemo({ setTopDisplay }) {
                 onOpen={() => {
                     setOpen(true);
                 }}
-                FabProps={{ color: 'info', size: "small", variant: "extended" }}
+                FabProps={{
+                    color: 'info', size: "small", variant: "extended",
+                    sx: {
+                        height: "25px", minWidth: "unset", width: "25px"
+                    }
+                }}
                 open={open}
-                style={{ marginTop:"35px" }}
+                style={{ marginTop:"10px", marginRight: "20px"}}
                 direction='down'>
                 {actions.map((action) => (
                     <SpeedDialAction
                         arrow
                         className={classes.speedDialAction}
                         key={action.name}
-                        TooltipClasses={{ ".MuiTooltip-tooltip": classes.tooltip,
+                        TooltipClasses={{
+                            ".MuiTooltip-tooltip": classes.tooltip,
                             ".MuiTooltip-tooltipArrow": classes.arrow,
-
                         }}
                         icon={action.icon}
                         tooltipTitle={action.name}

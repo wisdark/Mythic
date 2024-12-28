@@ -7,7 +7,7 @@ import { CallbacksTabsProcessBrowserLabel, CallbacksTabsProcessBrowserPanel } fr
 import { CallbacksTabsTaskingSplitLabel, CallbacksTabsTaskingSplitPanel} from "./CallbacksTabsTaskingSplit";
 import {CallbacksTabsTaskingConsoleLabel, CallbacksTabsTaskingConsolePanel} from "./CallbacksTabsTaskingConsole";
 
-export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, onEditTabDescription, contextMenuOptions, me}) {
+export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, setClickedTabId, onEditTabDescription, contextMenuOptions, me}) {
 
     const mountedRef = React.useRef(true);
     const [value, setValue] = React.useState(0);
@@ -15,6 +15,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
         setValue(newValue);
         //console.log(newValue);
         localStorage.setItem('clickedTab', openTabs[newValue].tabID);
+        setClickedTabId(openTabs[newValue].tabID);
     };
     React.useEffect( () => {
         return() => {
@@ -24,8 +25,10 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
     }, [])
     const onCloseTabLocal = ({ tabID, index }) => {
         if (index > 0) {
+            setClickedTabId(openTabs[index-1].tabID);
             setValue(index - 1);
         } else {
+            setClickedTabId(openTabs[0].tabID);
             setValue(0);
         }
         onCloseTab({ tabID, index });
@@ -40,7 +43,23 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
             }
         }
     }, [clickedTabId, openTabs]);
-    
+    const [collapseTaskRequest, setCollapseTaskRequest] = React.useState({})
+
+    const modifiedInteractContextMenuOptions = [...contextMenuOptions,
+        {
+            name: 'Collapse All Tasks',
+            click: ({event, index}) => {
+                setCollapseTaskRequest((prevState) => {
+                    if(prevState[index] !== undefined){
+                        prevState[index] += 1;
+                        return {...prevState};
+                    } else {
+                        return { [index]: 0};
+                    }
+                });
+
+            }
+        },]
     return (
         <div style={{width: "100%", display: 'flex', flexDirection: 'column', flexGrow: 1, height: "100%" }}>
             <AppBar color='default' position='static' className={"no-box-shadow"}>
@@ -64,8 +83,9 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                         tabInfo={tab}
                                         index={index}
                                         me={me}
+                                        selectedIndex={value}
                                         onDragTab={onDragTab}
-                                        contextMenuOptions={contextMenuOptions}
+                                        contextMenuOptions={modifiedInteractContextMenuOptions}
                                     />
                                 );
                             case 'interactSplit':
@@ -77,6 +97,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                         tabInfo={tab}
                                         index={index}
                                         me={me}
+                                        selectedIndex={value}
                                         onDragTab={onDragTab}
                                         contextMenuOptions={contextMenuOptions}
                                     />
@@ -90,6 +111,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                         tabInfo={tab}
                                         index={index}
                                         me={me}
+                                        selectedIndex={value}
                                         onDragTab={onDragTab}
                                         contextMenuOptions={contextMenuOptions}
                                     />
@@ -103,6 +125,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                         tabInfo={tab}
                                         index={index}
                                         me={me}
+                                        selectedIndex={value}
                                         onDragTab={onDragTab}
                                         contextMenuOptions={contextMenuOptions}
                                     />
@@ -116,6 +139,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                         tabInfo={tab}
                                         index={index}
                                         me={me}
+                                        selectedIndex={value}
                                         onDragTab={onDragTab}
                                         contextMenuOptions={contextMenuOptions}
                                     />
@@ -144,6 +168,7 @@ export function CallbacksTabs({ onCloseTab, openTabs, onDragTab, clickedTabId, o
                                 value={value}
                                 index={index}
                                 me={me}
+                                collapseTaskRequest={collapseTaskRequest}
                                 parentMountedRef={mountedRef}
                             />
                         );

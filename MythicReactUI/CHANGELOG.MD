@@ -4,6 +4,516 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.70] - 2024-12-25
+
+### Changed
+
+- Fixed an issue with wrong total counts for task output
+- Fixed an issue with task tooltips being too long and not wrapping
+- Re-ordered some of the buttons on the hamburger menu to bring more consistently used actions to the top
+
+## [0.2.69]
+
+### Changed
+
+- Added the ability to color individual callbacks
+- Added the ability to right-click a tab and collapse all the tasks within it
+- Fixed an annoyance where clicking inside a modal and dragging out would close the modal
+- Updated the UI to calculate server time_skew and update streaming accordingly
+- Fixed an issue with searching tasks by callback ID that wouldn't allow searching of other task options
+- Added a "host" field to callback search
+
+## [0.2.68] - 2024-12-18
+
+### Changed
+
+- Updated the interactive tasking page to not always check status field
+
+## [0.2.67] - 2024-12-18
+
+### Changed
+
+- Fixed a login bug after adding additional context to tracked local user state
+
+## [0.2.66] - 2024-12-17
+
+### Changed
+
+- Fixing slight issues with pagination for task responses
+
+## [0.2.65] - 2024-12-12
+
+### Changed
+
+- Fixed an issue with clashing parameter choices and dynamic query choices
+  - a parameter that has dynamic query parameter choices will populate the dropdowns in a modal
+  - a parameter that has dynamic query parameter choices AND choices defined will have the choices used on the command line with tab and the dynamic choices appear in the modal
+  
+## [0.2.64] - 2024-12-11
+
+### Changed
+
+- Fixed an issue where modal popups for command augmentation containers would look for the wrong payload type
+
+## [0.2.63] - 2024-12-10
+
+### Changed
+
+- Updated UI to better handle pagination and streaming task responses
+- Updated UI to fix bug with submitting payload description update
+- Updated UI to fix bug with editing prior modal tasking via command line
+
+## [0.2.62] - 2024-12-04
+
+### Changed
+
+- Fixed a bug for callback tokens not getting passed the .current property of the tracking ref
+
+## [0.2.61] - 2024-11-27
+
+### Changed
+
+- Updated the payloads' page modal boxes to reduce blank space and provide the same text feel as task output
+
+## [0.2.60] - 2024-11-26
+
+### Changed
+
+- Updated how invite links work in the UI allowing more flexibility
+- Updated the main dashboard/home page to refresh every minute
+
+## [0.2.59] - 2024-11-20
+
+### Changed
+
+- No longer need to refresh the page on updating your settings
+- Added "payloads" search page
+- Added commonFontFamily dropdown choice for people that want some common options when changing their preferences
+
+## [0.2.58] - 2024-11-18
+
+### Changed
+
+- Fixed some of the alignment formatting for string cells in creating payloads/tasking
+
+## [0.2.57] - 2024-11-15
+
+### Changed
+
+- Updated the preferences loading to take place on login 
+
+## [0.2.56] - 2024-11-14
+
+### Changed
+
+- Updated the initialization to save the defaults incase the database gets set to empty
+- Updated some MythicTooltip pieces to forward some embedded styles
+
+## [0.2.55] - 2024-11-14
+
+### Changed
+
+- Updated the string display dialog for browser script tables to match other text fields
+- Updated user preferences to be stored outside of local storage
+- Updated Tooltip from MUI to react-tooltip to speed things up a bit
+
+## [0.2.54] - 2024-11-8
+
+### Changed
+
+- Fixed a bug when clicking to filter tasks on the command line
+
+## [0.2.53] - 2024-11-6
+
+### Changed
+
+- Removed File as a tab-completable parameter on the CLI
+- Updated tab-completes to use local choices over dynamic query parameters on CLI
+
+## [0.2.52] - 2024-11-5
+
+### Changed
+
+- Fixed bug where right-clicking file browser tree and issuing "list" would list current callback host instead of selected file host
+- Fixed bug where selecting "original callback" -> "list" would crash for file browser
+- Fixed an alignment issue with trash icons
+- Fixed a bug where you could only tab complete the first parameter's options on the command line
+- Updated search page for processes to indicate if a process is marked as deleted or not
+- Updated process browser to only show active processes
+- Updated file browser right-click context menu
+- Updated file browser table row action button to not duplicate what's in the context menu for the row
+- Updated process browser info buttons 
+
+## [0.2.51] - 2024-10-21
+
+### Changed
+
+- Updated the Callback/Payload add/remove command dialogs to not show deleted commands
+- Added label for select options when no options are available in task modals
+- Updating the file extension syntax checker to better identify known text files without extensions
+  - ex: Makefile, Dockerfile
+- Added new field to user settings for showing display parameters or original parameters when doing an up/down arrow through cli history
+- Added a check to re-sync payload types when a new wrapper payload type is registered
+
+## [0.2.50] - 2024-10-16
+
+### Changed
+
+- Updated the tab-complete ability for a parameter's `choices` to support partial context
+- Updated callbacks table to locally save column widths locally
+
+## [0.2.49] - 2024-10-14
+
+### Changed
+
+- Updated the eventlog page to have options to view only unresolved/resolved warnings
+- Fixed some issues with the reverse search box in tasking
+- Added an option to stop hosting a file via the host file dialog box
+- Fixed but when deleting a tag causing an error
+- Added banner_text and banner_color options to operations that applies to every page
+- Added a timer for interactive task backdrop notification
+- Fixed issue with ChooseMultiple options not being populated in modal based on command line with shift+enter
+- Fixed an issue in interactive tasking with empty response being treated as a task
+- Added ability to tab-out choices for ChooseOne, ChooseOneCustom, ChooseMultiple, TypedArray, Array fields
+  - Includes ones with dynamic query functions set
+
+## [0.2.48] - 2024-10-01
+
+### Changed
+
+- Updated the modal transitions to 'none' to help in virtualized environments
+
+## [0.2.47] - 2024-09-29
+
+### Changed
+
+- Added ability to tab through ChooseOne parameter type values on the command line
+
+## [0.2.46] - 2024-09-27
+
+### Changed
+
+- Updated the default response fetch to 50 from 10 (still changeable in user settings)
+- Truncating long command lines to 2 lines wrapped and the full text on hover after 2s
+- Updated the copy command parameters speeddial function to also include the command name
+- Updated a few of the text-based dialogs to use Ace editors instead of text boxes for more consistency
+
+## [0.2.45] - 2024-09-23
+
+### Changed
+
+- Fixed an issue in light mode with the dropdown for the callbacks graph
+
+## [0.2.44] - 2024-09-14
+
+### Changed
+
+- Updated the tasking UI buttons, console view, and split view to also pass along the payload_type field for tasking
+  - This helps with command augmentation containers know which version of a command to execute
+  
+## [0.2.43] - 2024-09-13
+
+## Changed
+
+- Fixed an issue with export saved c2 profile instances improperly representing dictionaries
+
+## [0.2.42] - 2024-09-10
+
+### Changed
+
+- Updated the C2 config page to not miss keystrokes
+
+## [0.2.41] - 2024-09-09
+
+### Changed
+
+- Updated the toast notifications to not accumulate when you're not looking at the tab
+- Updated the toast notifications to dismiss all in queue when you click one
+- Updated the nested menu layers to not get hidden behind toast notification's ZIndex
+- Updated the C2 Profile/Container File viewer to more closely align with Plaintext views of tasking
+- Updated some of the interactive terminal code parsing to start handling some non-ASNI Color cases
+- Updated the C2 Profile start/stop button to disable between clicks so you can't accidentally spam it
+- Updated C2 Profile debug output view to default to non-wrapped color processed data
+- Added option to view standard output with ANSI colors processed
+
+## [0.2.40] - 2024-09-04
+
+### Changed
+
+- Added a button to edit tags while looking at them
+- Edited the HostFiles dialog to have an option for marking a file to be alerted or not on download
+- Added a size field to the payloads detailed dialog table
+
+## [0.2.39] - 2024-08-30
+
+### Changed
+
+- Updated min widths for fillWidth fields in tables to take at least 150 initially
+- Updated auto-tasking for file browser to not apply at the root level
+
+## [0.2.38] - 2024-08-29
+
+### Changed
+
+- Adjusted the file browser a bit to auto close folders with no data in them
+- Adjusted the media render view to indicate if chunks are missing
+
+## [0.2.36-37] - 2024-08-28
+
+### Changed
+
+- Fixed a bug where new file listings on blank data could result in a white screen
+- Fixed an opacity bug with tag dragging
+
+## [0.2.35] - 2024-08-28
+
+### Changed
+
+- Fixed the file browser tree context menu not showing the originating callback's id
+- Fixed eventing create&test window doing a weird cursor replacement
+
+## [0.2.34] - 2024-08-27
+
+### Changed
+
+- Updated the Eventing table to use the same table format as the callbacks table
+- Added a test button for the eventing to check for some mistakes before uploading
+
+## [0.2.33] - 2024-08-26
+
+### Changed
+
+- Updated the dropdown for actions in browser scripts to look better in light mode
+
+## [0.2.32] - 2024-08-23
+
+### Changed
+
+- Updated the interactive tasking for search to be a bit better
+- Updated interactive tasking to not scroll so much
+
+## [0.2.31] - 2024-08-21
+
+### Changed
+
+- Added the option to use the limit_credentials_by_type field in command parameters to limit UI choices
+
+## [0.2.29-30] - 2024-08-20
+
+### Changed
+
+- Forced visible status on tag labels because they were getting hidden on tasks
+- Fixed bad variable name when checking status of updating c2 profile config
+
+- Added the option for ctrl+Enter and cmd/windows+Enter to add new lines when issuing tasking
+
+## [0.2.28] - 2024-08-19
+
+### Changed
+
+- Fixed a bug in file browser where file display wouldn't disappear
+- Updated interactive display to not show prompt when not main tasking
+- Updated context menu for tables to be at the location of the cursor
+
+## [0.2.27] - 2024-08-19
+
+### Changed
+
+- Fixed a bug in args parsing via the command line that would lose an argument
+- Updated the text display for file browser when needing to list out file contents
+
+## [0.2.26] - 2024-08-15
+
+### Changed
+
+- Added a button to view a payload's detailed table from a callback's detailed table
+- Added ini syntax highlighting options
+
+## [0.2.25] - 2024-08-14
+
+### Changed
+
+- Fixed an invalid check for command id causing a crash on the tasking console view with help/clear tasks
+- Updated normal interact button based on your preferred style of interacting
+
+## [0.2.23] - 2024-08-14
+
+### Changed
+
+- Added better error handling for null values when sorting tables
+- Added default value when opening tabs from right clicking
+- Added an auto-scroll to the bottom of a tasking/split tasking panel when opening it initially
+
+## [0.2.22] - 2024-08-13
+
+### Changed
+
+- Added a user setting for preferred interact option (accordion, split, or console)
+- Added option to double-click callback table row to auto open tasking tab
+- Initial updates for the process browser to better represented displayed data
+- Updates to process browser to indicate fetching new content
+- Updates to process browser for expand/collapse all button
+
+## [0.2.21] - 2024-08-12
+
+### Changed
+
+- Fixed an issue with file browser context menu available through modals
+- Added highlighting for .sh files
+- Fixed an issue where auto-tasking wouldn't fire for paths that didn't already exist
+- Updated dark mode file browser selection colors to be easier to see with info icons
+- Updated file browser to show errored task for failed paths to make it easier to see errors
+- Added a toast notification on file browser task errors
+
+## [0.2.20] - 2024-08-11
+
+### Changed
+
+- Fixed context menu in mythic tree to not disappear when new data comes in
+- Fixed context menus to not shrink and scroll when at the bottom of the screen
+- Fixed an issue where trailing slashes on the file browser wouldn't auto-populate data
+- Fixed an issue where double data might open when clicking to expand a folder in the file browser tree view
+- Fixed issue with 1-2s delay showing callback data as blank with new loading message
+
+## [0.2.19] - 2024-08-09
+
+### Changed
+
+- Added context menu options for the file browser and callbacks table
+- Added option in file browser to control/cmd click multiple rows at once
+- Major updates to how the file browser works - typing in the bar at the top only fetches data, not issues tasks
+  - there's a new option on the table to auto-issue tasks for folders that don't have data (off by default)
+
+## [0.2.18] - 2024-08-08
+
+### Changed
+
+- Adjusted the border bounds for a few elements in the UI to minimize blank space
+- Added a right-click context menu to the active callbacks table
+- Added a sub-menu structure to the active callbacks menu to keep the menu from getting too long
+- Added an option to open multiple callback tabs at once
+
+## [0.2.17] - 2024-08-07
+
+### Changed
+
+- updated the file preview window to display additional context and change names of tabs slightly
+- fixed a bug that resulted in double "FilePreviewed" tags in the UI
+- updated the sizes of file browser icons to stay consistent
+- updated body of file browser table to provide context about if there's no data loaded or collected
+- updated border bounds for interactive tasks
+- fixed checkbox alignment in file searches
+- moved location of file preview to info column in file browser to maintain text alignment in filenames
+
+## [0.2.16] - 2024-08-06
+
+### Changed
+
+- Fixed issue in showing egress pathing in UI for 2+ linked nodes
+
+## [0.2.15] - 2024-08-06
+
+### Changed
+
+- Fixed the lack of auto-scrolling for console display style
+
+## [0.2.14] - 2024-08-05
+
+### Changed
+
+- Updated the proxy search page to hide stopped proxies by default
+- Updated the proxy search page to have custom button on rpfwd proxies to manually test connectivity (5s timeout)
+- Updated table columns and handle drag animations
+- Updated task search to default to command + parameters with a separate option for just command
+
+## [0.2.13] - 2024-08-05
+
+### Changed
+
+- Updated the 'download' option in file previews to not be a long button
+- Updated indicator for eventing to be with the taskID instead of username
+
+## [0.2.12] - 2024-08-02
+
+### Changed
+
+- Fixed the create credential dialog while issuing tasks using the old graphql mutation
+
+## [0.2.11] - 2024-08-02
+
+### Changed
+
+- Fixed a duplicating issue when trying to up/down arrow through tasking
+- Added button to auto-format output as JSON for text views and update mode to JSON
+
+## [0.2.10] - 2024-07-31
+
+### Changed
+
+- small fix for browser script tables with titles not having column handles properly aligned
+
+## [0.2.9] - 2024-07-31
+
+### Changed
+
+- Adjusted file previews to provide download, string preview, hex preview, and media preview all at once via tabs
+- updated file searching to use new preview options
+- fixed file/process browsers to support column resizing
+- updated mythic-cli to add option for setting mythic_server to host based networking (vs bridge)
+
+## [0.2.8] - 2024-07-30
+
+### Changed
+
+- Fixed an issue with adjusting table columns
+- fixed an issue with download history not working in the file browser
+- updated file browser download history options with file, hex, and string previews
+- updated the new tag dialog to move the "new" down as a "plus" sign
+- updated comments on tasks to appear inline (with cut off elipsis)
+
+## [0.2.6] - 2024-07-29
+
+### Changed
+
+- fixed browser scripts not toggling
+- fixed condensed view browser script for numbers not showing up
+- saved preferences for user changing panel sizes on active callbacks page
+- saved preferences for user filtering tables on active callbacks page
+- adjusted tooltip timer to be .75s instead of 1s
+- auto scroll to selected callback in the top panel of active callbacks when selecting corresponding tab
+- unhighlight callback when tab is closed
+- highlight active tab to mirror highlighting of table row
+- updated tabs to reduce extra space
+
+## [0.2.4] - 2024-07-29
+
+### Changed
+
+- adjusted auto scrolling of tasks to not happen unless you're scrolled to the bottom already
+- using the old callbacks table view, the callback you're interacting with will be highlighted
+- tasks are auto expanded on the single task view page
+- the file browser now has some "history" for the last 20 folders visited with forward/backward arrows
+- the file browser now has an "up" button to go up one folder in addition to double clicking a folder to go down one
+- fixed an issue where sometimes a task's output browser script wouldn't render
+- condensed the views of tables in browser scripts, file browser, process browser, and active callbacks table to be able to view more at once
+  - removed agent icons from the active callbacks table and replaced with text of payload type name to make things cleaner when compact
+- updated interactive callback controls to have a different background color to make the input fields more obvious
+- adjusted task displays to link to both task and callbacks along with tooltips on hover
+- fixed an issue where you could do multiple context menues in the file browser tree view
+- fixed pty's command history to reset after issuing a task so that it's more consistent
+
+## [0.2.3] - 2024-07-17
+
+### Changed
+
+- Fixed a bug with exporting payload configs due to a back-end name change of the graphql query
+
+## [0.2.2] - 2024-07-17
+
+### Changed
+
+- Fixed a bug with viewing c2 profile parameters in the UI
+
 ## [0.1.86] - 2024-03-30
 
 ### Changed

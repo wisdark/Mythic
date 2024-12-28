@@ -9,6 +9,7 @@ import (
 	"github.com/its-a-feature/Mythic/logging"
 	"github.com/its-a-feature/Mythic/utils"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"strings"
 )
 
 // C2_SYNC STRUCTS
@@ -34,16 +35,18 @@ type C2Profile struct {
 }
 
 const (
-	C2_PARAMETER_TYPE_STRING          C2ParameterType = "String"
-	C2_PARAMETER_TYPE_BOOLEAN                         = "Boolean"
-	C2_PARAMETER_TYPE_CHOOSE_ONE                      = "ChooseOne"
-	C2_PARAMETER_TYPE_CHOOSE_MULTIPLE                 = "ChooseMultiple"
-	C2_PARAMETER_TYPE_ARRAY                           = "Array"
-	C2_PARAMETER_TYPE_DATE                            = "Date"
-	C2_PARAMETER_TYPE_DICTIONARY                      = "Dictionary"
-	C2_PARAMETER_TYPE_NUMBER                          = "Number"
-	C2_PARAMETER_TYPE_TYPED_ARRAY                     = "TypedArray"
-	C2_PARAMETER_TYPE_FILE                            = "File"
+	C2_PARAMETER_TYPE_STRING            C2ParameterType = "String"
+	C2_PARAMETER_TYPE_BOOLEAN                           = "Boolean"
+	C2_PARAMETER_TYPE_CHOOSE_ONE                        = "ChooseOne"
+	C2_PARAMETER_TYPE_CHOOSE_ONE_CUSTOM                 = "ChooseOneCustom"
+	C2_PARAMETER_TYPE_CHOOSE_MULTIPLE                   = "ChooseMultiple"
+	C2_PARAMETER_TYPE_ARRAY                             = "Array"
+	C2_PARAMETER_TYPE_DATE                              = "Date"
+	C2_PARAMETER_TYPE_DICTIONARY                        = "Dictionary"
+	C2_PARAMETER_TYPE_NUMBER                            = "Number"
+	C2_PARAMETER_TYPE_TYPED_ARRAY                       = "TypedArray"
+	C2_PARAMETER_TYPE_FILE                              = "File"
+	C2_PARAMETER_TYPE_FILE_MULTIPLE                     = "FileMultiple"
 )
 
 type C2Parameter struct {
@@ -170,6 +173,7 @@ func c2Sync(in C2SyncMessage) error {
 	go autoStartC2Profile(c2Profile)
 	reSyncPayloadTypes()
 	checkContainerStatusAddC2Channel <- c2Profile
+	go CreateGraphQLSpectatorAPITokenAndSendOnStartMessage(c2Profile.Name)
 	return nil
 }
 
@@ -305,6 +309,52 @@ func autoStartC2Profile(c2Profile databaseStructs.C2profile) {
 			UpdateC2ProfileRunningStatus(c2Profile, c2StartResp.InternalServerRunning)
 			if !c2StartResp.InternalServerRunning {
 				go SendAllOperationsMessage(fmt.Sprintf("Failed to start c2 profile %s:\n%s", c2Profile.Name, c2StartResp.Error), 0, "", database.MESSAGE_LEVEL_WARNING)
+			}
+		}
+	}
+	autoReHostFiles(c2Profile)
+}
+
+func autoReHostFiles(c2Profile databaseStructs.C2profile) {
+	fileHostedTagType := databaseStructs.TagType{
+		Name: "FileHosted",
+	}
+	err := database.DB.Get(&fileHostedTagType, `SELECT id FROM tagtype WHERE name=$1`, fileHostedTagType.Name)
+	if err != nil {
+		logging.LogError(err, "failed to get existing tag types")
+		return
+	}
+	currentTags := []databaseStructs.Tag{}
+	err = database.DB.Select(&currentTags, `SELECT * FROM tag WHERE tagtype_id=$1`, fileHostedTagType.ID)
+	if err != nil {
+		logging.LogError(err, "failed to get existing tags for FileHosted tagtype")
+		return
+	}
+	for _, tag := range currentTags {
+		dataStruct := tag.Data.StructValue()
+		for key, _ := range dataStruct {
+			if strings.HasPrefix(key, fmt.Sprintf("%s; ", c2Profile.Name)) {
+				newTagMap := dataStruct[key].(map[string]interface{})
+				c2HostFileResponse, err := RabbitMQConnection.SendC2RPCHostFile(C2HostFileMessage{
+					Name:     newTagMap["c2_profile"].(string),
+					FileUUID: newTagMap["agent_file_id"].(string),
+					HostURL:  newTagMap["host_url"].(string),
+					Remove:   false,
+				})
+				if err != nil {
+					logging.LogError(err, "failed to send host file message to c2 profile")
+					go SendAllOperationsMessage(fmt.Sprintf(
+						"%s failed to start hosting file:\n%s", newTagMap["c2_profile"].(string),
+						err.Error()), tag.Operation, "", database.MESSAGE_LEVEL_WARNING)
+					continue
+				}
+				if !c2HostFileResponse.Success {
+					logging.LogError(err, "c2 profile failed to start hosting file")
+					go SendAllOperationsMessage(fmt.Sprintf(
+						"%s failed to start hosting file:\n%s", newTagMap["c2_profile"].(string),
+						c2HostFileResponse.Error), tag.Operation, "", database.MESSAGE_LEVEL_WARNING)
+					continue
+				}
 			}
 		}
 	}

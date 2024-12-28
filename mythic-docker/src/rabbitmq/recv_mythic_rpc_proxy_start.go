@@ -14,6 +14,8 @@ type MythicRPCProxyStartMessage struct {
 	RemotePort int    `json:"remote_port"`
 	RemoteIP   string `json:"remote_ip"`
 	PortType   string `json:"port_type"`
+	Username   string `json:"Username"`
+	Password   string `json:"Password"`
 }
 type MythicRPCProxyStartMessageResponse struct {
 	Success   bool   `json:"success"`
@@ -37,6 +39,10 @@ func MythicRPCProxyStart(input MythicRPCProxyStartMessage) MythicRPCProxyStartMe
 	response := MythicRPCProxyStartMessageResponse{
 		Success: false,
 	}
+	if input.PortType == CALLBACK_PORT_TYPE_RPORTFWD && (input.RemoteIP == "" || input.RemotePort == 0) {
+		response.Error = "Missing remote ip or port"
+		return response
+	}
 	task := databaseStructs.Task{ID: input.TaskID}
 	if err := database.DB.Get(&task, `SELECT id, operation_id, callback_id FROM task WHERE id=$1`, task.ID); err != nil {
 		logging.LogError(err, "Failed to get task from database to start socks")
@@ -57,15 +63,26 @@ func MythicRPCProxyStart(input MythicRPCProxyStartMessage) MythicRPCProxyStartMe
 			}
 		}
 		response.LocalPort = input.LocalPort
-		if err := proxyPorts.Add(task.CallbackID, input.PortType, input.LocalPort, input.RemotePort, input.RemoteIP, task.ID, task.OperationID,
-			0, 0, 0); err != nil {
+		err := proxyPorts.Add(task.CallbackID,
+			input.PortType,
+			input.LocalPort,
+			input.RemotePort,
+			input.RemoteIP,
+			task.ID,
+			task.OperationID,
+			0,
+			0,
+			0,
+			input.Username,
+			input.Password)
+		if err != nil {
 			logging.LogError(err, "Failed to add new callback port")
 			response.Error = err.Error()
 			return response
-		} else {
-			response.Success = true
-			return response
 		}
+		response.Success = true
+		return response
+
 	}
 
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/its-a-feature/Mythic/database"
 	databaseStructs "github.com/its-a-feature/Mythic/database/structs"
 	"github.com/its-a-feature/Mythic/logging"
-	"github.com/its-a-feature/Mythic/rabbitmq"
 )
 
 type C2HostFileMessageInput struct {
@@ -15,9 +14,11 @@ type C2HostFileMessageInput struct {
 }
 
 type C2HostFileMessage struct {
-	C2ProfileID int    `json:"c2_id" binding:"required"`
-	FileUUID    string `json:"file_uuid" binding:"required"`
-	HostURL     string `json:"host_url" binding:"required"`
+	C2ProfileID     int    `json:"c2_id" binding:"required"`
+	FileUUID        string `json:"file_uuid" binding:"required"`
+	HostURL         string `json:"host_url"`
+	AlertOnDownload bool   `json:"alert_on_download"`
+	Remove          bool   `json:"remove"`
 }
 
 type C2HostFileMessageResponse struct {
@@ -36,6 +37,25 @@ func C2HostFileMessageWebhook(c *gin.Context) {
 		})
 		return
 	}
+	if input.Input.HostURL == "" && !input.Input.Remove {
+		logging.LogError(nil, "Failed to parse out required parameters")
+		c.JSON(http.StatusOK, C2HostFileMessageResponse{
+			Status: "error",
+			Error:  "Must supply a hosting url path starting with '/'",
+		})
+		return
+	}
+	ginOperatorOperation, ok := c.Get("operatorOperation")
+	if !ok {
+		logging.LogError(nil, "Failed to get operatorOperation information")
+		c.JSON(http.StatusOK, ArtifactCreateResponse{
+			Status: "error",
+			Error:  "Failed to get current operation. Is it set?",
+		})
+		return
+	}
+	operatorOperation := ginOperatorOperation.(*databaseStructs.Operatoroperation)
+
 	c2Profile := databaseStructs.C2profile{ID: input.Input.C2ProfileID}
 	if err := database.DB.Get(&c2Profile, `SELECT "name" FROM c2profile WHERE id=$1`,
 		input.Input.C2ProfileID); err != nil {
@@ -47,42 +67,33 @@ func C2HostFileMessageWebhook(c *gin.Context) {
 		return
 	}
 	hostFile := databaseStructs.Filemeta{}
-	if err := database.DB.Get(&hostFile, `SELECT deleted FROM filemeta WHERE agent_file_id=$1`,
-		input.Input.FileUUID); err != nil {
+	if err := database.DB.Get(&hostFile, `SELECT deleted, id, operation_id, filename FROM filemeta WHERE agent_file_id=$1 AND operation_id=$2`,
+		input.Input.FileUUID, operatorOperation.CurrentOperation.ID); err != nil {
 		logging.LogError(err, "Failed to find file")
 		c.JSON(http.StatusOK, C2HostFileMessageResponse{
 			Status: "error",
 			Error:  err.Error(),
 		})
 		return
-	} else if hostFile.Deleted {
+	}
+	if hostFile.Deleted {
 		c.JSON(http.StatusOK, C2HostFileMessageResponse{
 			Status: "error",
 			Error:  "File is deleted, can't be hosted",
 		})
 		return
 	}
-	c2HostFileResponse, err := rabbitmq.RabbitMQConnection.SendC2RPCHostFile(rabbitmq.C2HostFileMessage{
-		Name:     c2Profile.Name,
-		FileUUID: input.Input.FileUUID,
-		HostURL:  input.Input.HostURL,
-	})
-	if err != nil {
-		logging.LogError(err, "Failed to send RPC call to c2 profile in C2ProfileHostFileWebhook", "c2_profile", c2Profile.Name)
-		c.JSON(http.StatusOK, C2HostFileMessageResponse{
-			Status: "error",
-			Error:  "Failed to send RPC message to c2 profile",
-		})
-		return
-	}
-	if !c2HostFileResponse.Success {
-		c.JSON(http.StatusOK, C2HostFileMessageResponse{
-			Status: "error",
-			Error:  c2HostFileResponse.Error,
-		})
-		return
-	}
-	go rabbitmq.RestartC2ServerAfterUpdate(c2Profile.Name, true)
+	go tagFileAs(hostFile.ID, operatorOperation.CurrentOperator.Username, hostFile.OperationID, tagTypeHostedByC2, map[string]interface{}{
+		c2Profile.Name + "; " + input.Input.HostURL: map[string]interface{}{
+			"c2_profile":        c2Profile.Name,
+			"host_url":          input.Input.HostURL,
+			"agent_file_id":     input.Input.FileUUID,
+			"filename":          string(hostFile.Filename),
+			"alert_on_download": input.Input.AlertOnDownload,
+		},
+	}, c, input.Input.Remove)
+
+	//go rabbitmq.RestartC2ServerAfterUpdate(c2Profile.Name, true)
 	c.JSON(http.StatusOK, C2HostFileMessageResponse{
 		Status: "success",
 		Error:  "",

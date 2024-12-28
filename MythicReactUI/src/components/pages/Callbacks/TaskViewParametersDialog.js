@@ -11,6 +11,7 @@ import 'ace-builds/src-noconflict/theme-monokai';
 import 'ace-builds/src-noconflict/theme-xcode';
 import "ace-builds/src-noconflict/ext-searchbox";
 import {useTheme} from '@mui/material/styles';
+import {MythicModifyStringDialog} from "../../MythicComponents/MythicDialog";
 
 const getParametersQuery = gql`
 query getParametersQuery ($task_id: Int!) {
@@ -25,6 +26,10 @@ query getParametersQuery ($task_id: Int!) {
     command {
       cmd
       id
+      payloadtype {
+        name
+        id
+      }
     }
   }
 }
@@ -46,6 +51,7 @@ export function TaskViewParametersDialog(props) {
                 workingComment += "\n\nOriginal Command: " + data.task_by_pk.command.cmd;
                 workingComment += "\nIssued Command: " + data.task_by_pk.command_name;
               }
+              workingComment += "\n\nPayload Type:\n" + data.task_by_pk.command.payloadtype.name;
             }
             setComment(workingComment);
         },
@@ -60,28 +66,11 @@ export function TaskViewParametersDialog(props) {
     }
   return (
     <React.Fragment>
-        <DialogTitle id="form-dialog-title">View Task Parameters</DialogTitle>
-        <DialogContent dividers={true}>
-        <AceEditor 
-              mode="json"
-              theme={theme.palette.mode === "dark" ? "monokai" : "xcode"}
-              fontSize={14}
-              showGutter={true}
-              highlightActiveLine={true}
-              value={comment}
-              focus={true}
-              width={"100%"}
-              setOptions={{
-                showLineNumbers: true,
-                  useWorker: false,
-                tabSize: 4
-              }}/>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={props.onClose} variant="contained" color="primary">
-            Close
-          </Button>
-        </DialogActions>
+        <MythicModifyStringDialog title={`View Task Parameters`}
+                                  onClose={props.onClose}
+                                  maxRows={40}
+                                  wrap={true}
+                                  value={comment} />
   </React.Fragment>
   );
 }

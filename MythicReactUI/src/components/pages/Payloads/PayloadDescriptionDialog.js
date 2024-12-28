@@ -1,13 +1,9 @@
 import React, {useState} from 'react';
-import Button from '@mui/material/Button';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import MythicTextField from '../../MythicComponents/MythicTextField';
 import {useQuery, gql, useMutation} from '@apollo/client';
 import { snackActions } from '../../utilities/Snackbar';
 import {MythicConfirmDialog} from "../../MythicComponents/MythicConfirmDialog";
 import Typography from '@mui/material/Typography';
+import {MythicModifyStringDialog} from "../../MythicComponents/MythicDialog";
 
 const updateDescriptionMutation = gql`
 mutation updateDescription ($payload_id: Int!, $description: String) {
@@ -37,21 +33,25 @@ query getDescriptionQuery ($payload_id: Int!) {
 `;
 
 export function PayloadDescriptionDialog(props) {
-    const [description, setDescription] = useState("");
-    const oldDescription = React.useRef();
+    const description = React.useRef("");
+    const [oldDescription, setOldDescription] = useState("");
     const hasCallbacks = React.useRef(false);
     useQuery(getDescriptionQuery, {
         variables: {payload_id: props.payload_id},
         onCompleted: data => {
-            setDescription(data.payload_by_pk.description)
-            oldDescription.current = data.payload_by_pk.description;
+            description.current = data.payload_by_pk.description;
+            setOldDescription(data.payload_by_pk.description);
             hasCallbacks.current = data.payload_by_pk.callbacks.length > 0;
         },
         fetchPolicy: "network-only"
     });
     const [updateDescription] = useMutation(updateDescriptionMutation, {
         onCompleted: (data) => {
-            snackActions.success("Updated Payload Description")
+            snackActions.success("Updated Payload Description");
+            props.onClose();
+        },
+        onError: (data) => {
+            console.log(data);
         }
     });
     const [updateCallbackDescriptions] = useMutation(updateCallbackDescriptionsMutation, {
@@ -81,18 +81,18 @@ export function PayloadDescriptionDialog(props) {
         setOpenUpdateAll(false);
         updateCallbackDescriptions({variables: {
                 payloadID: props.payload_id,
-                oldDescription: oldDescription.current,
-                newDescription: description,
+                oldDescription: oldDescription,
+                newDescription: description.current,
             }});
         updatePayloadDescription();
         // now update all
     }
     const updatePayloadDescription = () => {
         setOpenUpdateAll(false);
-        updateDescription({variables: {payload_id: props.payload_id, description: description}});
-        props.onClose();
+        updateDescription({variables: {payload_id: props.payload_id, description: description.current}});
     }
-    const onCommitSubmit = () => {
+    const onCommitSubmit = (updatedMessage) => {
+        description.current = updatedMessage;
         if(hasCallbacks.current){
             setOpenUpdateAll(true);
         } else {
@@ -100,24 +100,15 @@ export function PayloadDescriptionDialog(props) {
         }
 
     }
-    const onChange = (name, value, error) => {
-        setDescription(value);
-    }
-  
+
   return (
     <React.Fragment>
-        <DialogTitle id="form-dialog-title">Edit Payload Description</DialogTitle>
-        <DialogContent dividers={true}>
-            <MythicTextField autoFocus onChange={onChange} value={description} onEnter={onCommitSubmit}/>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={props.onClose} color="primary">
-            Close
-          </Button>
-          <Button variant="contained" onClick={onCommitSubmit} color="success">
-            Submit
-          </Button>
-        </DialogActions>
+        <MythicModifyStringDialog title={"Edit Payload Description"}
+                                  maxRows={5}
+                                  onClose={props.onClose}
+                                  value={oldDescription}
+                                  dontCloseOnSubmit={true}
+                                  onSubmit={onCommitSubmit} />
         {openUpdateAll &&
             <MythicConfirmDialog title={"Update Associated Callback's Descriptions?"}
                                  dontCloseOnSubmit={true}

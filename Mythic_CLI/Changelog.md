@@ -4,6 +4,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.3.9 - 2024-12-18
+
+### Changed
+
+- Updated the container stopping logic to thread instead of doing it sequentially
+
+## 0.3.8 - 2024-12-10 
+
+### Changed
+
+- Added check for docker compose plugin, not just docker version
+
+## 0.3.7 - 
+
+### Changed
+
+- Updated the default value for an installed service's *_use_volume setting to be `false` instead of `true`
+  - too many people were having issues with lingering volumes, so it's better to have people explicitly set this if they need it
+
+## 0.3.6 - 2024-11-25
+
+### Changed
+
+- Updated mythic_server_allow_invite_links to get passed into the mythic_server container
+
+## 0.3.5 - 2024-09-03
+
+### Changed
+
+- Dropped support for `docker-compose` script as it causes too many breaking issues in Kali
+  - Make sure the `compose` plugin is installed with Docker (should be default in modern installs)
+- Added support for `--keep-volume` flag with start, build, and install commands
+  - This allows you to manually override on a per-command basis if you want to keep the volume with an agent/c2 container or not
+  - By default, if `rebuild_on_start` is true, then volumes will be removed when containers start.
+  - By default, volumes are removed on explicit `build` commands.
+- Added support for tracking an installed service's `install_location`
+  - `mythic-cli update --all-services` and `./mythic-cli update --services [name] [name]` can check for updated remote_images
+
+## 0.3.4 - 2024-08-27
+
+### Changed
+
+- Added option for `mythic_docker_networking` to allow for `bridge` or `host` networking
+  - This applies to all main mythic services
+  
+## 0.3.3 - 2024-08-11
+
+### Changed
+
+- Added a check for a GraphQL query to help make sure things are fully online before returning success from start
+
+## 0.3.2 - 2024-08-06
+
+### Changed
+
+- Hopefully fixed a permissions issue with the /projects directory for jupyter notebooks
+
+## 0.3.1 - 2024-08-01
+
+### Changed
+
+- Made the default for dynamic ports to bind to localhost
+
+## 0.3.0 - 2024-07-31
+
+### Changed
+
+- Added experimental support for changing the mythic_server container to host networking
+
 ## 0.2.22 - 2024-04-09
 
 ### Changed

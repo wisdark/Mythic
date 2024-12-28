@@ -20,6 +20,8 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { MythicStyledTooltip } from '../../MythicComponents/MythicStyledTooltip';
 import { IconButton } from '@mui/material';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import {meState} from "../../../cache";
 
 const newOperatorMutation = gql`
 mutation NewOperator($username: String!, $password: String!) {
@@ -31,12 +33,14 @@ mutation NewOperator($username: String!, $password: String!) {
 }
 `;
 const Update_Operation = gql`
-mutation MyMutation($operation_id: Int!, $channel: String!, $complete: Boolean!, $name: String!, $webhook: String!) {
-    updateOperation(operation_id: $operation_id, channel: $channel, complete: $complete, name: $name, webhook: $webhook) {
+mutation MyMutation($operation_id: Int!, $channel: String!, $complete: Boolean!, $name: String!, $webhook: String!, $banner_text: String!, $banner_color: String!) {
+    updateOperation(operation_id: $operation_id, channel: $channel, complete: $complete, name: $name, webhook: $webhook, banner_text: $banner_text, banner_color: $banner_color) {
         status
         error
         name
         complete
+        banner_text
+        banner_color
         id
     }
 }
@@ -76,6 +80,15 @@ export function OperationTable(props){
             if(data.updateOperation.status === "success"){
                 props.onUpdateOperation(data.updateOperation);
                 snackActions.success("Successfully updated operation");
+
+                meState({...meState(), user: {...meState().user,
+                        current_operation_id: data.updateOperation.id,
+                        current_operation: data.updateOperation.name,
+                        current_operation_complete: data.updateOperation.complete,
+                        current_operation_banner_text: data.updateOperation.banner_text,
+                        current_operation_banner_color: data.updateOperation.banner_color,
+                    }});
+                localStorage.setItem("user", JSON.stringify(meState().user));
             } else {
                 snackActions.error(data.updateOperation.error);
             }
@@ -101,13 +114,15 @@ export function OperationTable(props){
             console.log(data);
         }
     })
-    const onUpdateOperation = ({operation_id, name, channel, webhook, complete}) => {
+    const onUpdateOperation = ({operation_id, name, channel, webhook, complete, banner_text, banner_color}) => {
         updateOperation({variables:{
             operation_id,
             name,
             channel,
             webhook,
-            complete
+            complete,
+                banner_text,
+                banner_color
         }});
     }
     const onSubmitNewOperator = (id, username, passwordOld, passwordNew) => {
@@ -129,23 +144,37 @@ export function OperationTable(props){
     }
     return (
         <React.Fragment>
-        <Paper elevation={5} style={{backgroundColor: theme.pageHeader.main, color: theme.pageHeaderText.main, marginBottom: "5px", marginTop: "10px", marginRight: "5px"}} variant={"elevation"}>
+        <Paper elevation={5} style={{backgroundColor: theme.pageHeader.main, color: theme.pageHeaderText.main,
+            marginBottom: "5px", marginLeft: "5px", marginRight: "5px"}} variant={"elevation"}>
             <Typography variant="h3" style={{textAlign: "left", display: "inline-block", marginLeft: "20px"}}>
                 Operations
             </Typography>
             {showDeleted ? (
-                <MythicStyledTooltip title={"Hide Deleted Operations"} style={{float: "right"}}>
-                    <IconButton size="small" style={{float: "right", marginTop: "5px"}} variant="contained" onClick={() => setShowDeleted(!showDeleted)}><VisibilityIcon /></IconButton>
+                <MythicStyledTooltip title={"Hide Deleted Operations"} tooltipStyle={{float: "right"}}>
+                    <IconButton size="small" style={{float: "right", marginTop: "5px", marginRight: "10px"}}
+                                variant="contained" onClick={() => setShowDeleted(!showDeleted)}>
+                        <VisibilityIcon />
+                    </IconButton>
                 </MythicStyledTooltip>
                 
               ) : (
-                <MythicStyledTooltip title={"Show Deleted Operations"} style={{float: "right"}}>
-                  <IconButton size="small" style={{float: "right",  marginTop: "5px"}} variant="contained" onClick={() => setShowDeleted(!showDeleted)} ><VisibilityOffIcon /></IconButton>
+                <MythicStyledTooltip title={"Show Deleted Operations"} tooltipStyle={{float: "right"}}>
+                  <IconButton size="small" style={{float: "right",  marginTop: "5px", marginRight: "10px"}}
+                              variant="contained" onClick={() => setShowDeleted(!showDeleted)} >
+                      <VisibilityOffIcon />
+                  </IconButton>
                 </MythicStyledTooltip>
               )}
-            <Button size="small" onClick={() => {setOpenNewOperationDialog(true);}} style={{marginRight: "20px", float: "right", marginTop: "10px"}} startIcon={<AddCircleOutlineOutlinedIcon/>} color="success" variant="contained">New Operation</Button>
-            <Button size="small" onClick={()=>{setOpenNewOperatorDialog(true);}} style={{marginRight: "20px", float: "right", marginTop: "10px"}} startIcon={<AddCircleOutlineOutlinedIcon/>} color="success" variant="contained">New Operator</Button>
-            
+            <MythicStyledTooltip title={"Create new operator"} tooltipStyle={{float: "right"}}>
+                <IconButton size="small"
+                            onClick={()=>{setOpenNewOperatorDialog(true);}}
+                            style={{marginRight: "10px", float: "right", marginTop: "5px"}}
+                            variant="contained">
+                    <PersonAddIcon />
+                </IconButton>
+            </MythicStyledTooltip>
+            <Button size="small" onClick={() => {setOpenNewOperationDialog(true);}} style={{marginRight: "20px", float: "right", marginTop: "10px"}} startIcon={<AddCircleOutlineOutlinedIcon color="success"/>}  variant="contained">New Operation</Button>
+
             {openNewOperator &&
                 <MythicDialog open={openNewOperator} 
                     onClose={()=>{setOpenNewOperatorDialog(false);}} 
@@ -168,31 +197,43 @@ export function OperationTable(props){
             }
             
         </Paper>
-        <TableContainer component={Paper} className="mythicElement">   
-            
-            <Table  size="small" style={{"tableLayout": "fixed", "maxWidth": "calc(100vw)", "overflow": "scroll"}}>
+        <TableContainer className="mythicElement">
+            {props.operations.length === 0 &&
+                <div style={{display: "flex", flexDirection: "column", flexGrow: 1}}>
+                    <div style={{
+                        position: "absolute",
+                        left: "35%",
+                        top: "50%"
+                    }}>
+                        {"No Operations available!"}<br/>
+                        {"Ask a Mythic admin or operation lead to add you to an operation."}
+                    </div>
+                </div>
+            }
+            <Table  size="small" style={{"tableLayout": "fixed", "overflow": "scroll"}}>
                 <TableHead>
                     <TableRow>
-                        <TableCell style={{width: "8rem"}}></TableCell>
+                        <TableCell style={{width: "2rem"}}></TableCell>
                         <TableCell style={{width: "8rem"}}>Configure</TableCell>
                         <TableCell style={{width: "8rem"}}>Operators</TableCell>
                         <TableCell>Operation Name</TableCell>
                         <TableCell>Operation Admin</TableCell>
-                        <TableCell style={{width: "10rem"}}>Analysis</TableCell>
-                        <TableCell style={{width: "12rem"}}>Operation Status</TableCell>
+                        <TableCell style={{width: "8rem"}}>Analysis</TableCell>
+                        <TableCell style={{width: "11rem"}}>Operation Status</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                
-                {props.operations.map( (op) => (
-                    showDeleted || !op.deleted ? (
-                        <OperationTableRow
-                            me={props.me}
-                            key={"operation" + op.id} onUpdateOperation={onUpdateOperation}
+                    {props.operations.map((op) => (
+                        showDeleted || !op.deleted ? (
+                            <OperationTableRow
+                                me={props.me}
+                                key={"operation" + op.id}
+                            onUpdateOperation={onUpdateOperation}
+                            onUpdateCurrentOperation={props.onUpdateCurrentOperation}
                             updateDeleted={props.updateDeleted}
                             {...op} operator={props.operator}
                         />
-                    ) : (null)
+                    ) : null
                 ))}
                 </TableBody>
             </Table>

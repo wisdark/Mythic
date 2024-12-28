@@ -44,6 +44,8 @@ class MythicTextField extends React.Component {
         variant: PropTypes.string,
         inline: PropTypes.bool,
         marginBottom: PropTypes.string,
+        value: PropTypes.any,
+        disabled: PropTypes.bool,
     }
     onChange = evt => {
         const name = this.props.name;
@@ -77,12 +79,13 @@ class MythicTextField extends React.Component {
                     placeholder={this.props.placeholder}
                     value={this.props.value}
                     onChange={this.onChange}
+                    color={"secondary"}
                     onKeyDown={this.onKeyPress}
                     label={this.props.showLabel === undefined ? this.props.name : this.props.showLabel ? this.props.name : undefined}
                     autoFocus={this.props.autoFocus}
                     variant={this.props.variant === undefined ? "outlined" : this.props.variant}
                     data-lpignore={true}
-                    autoComplete={this.props.autoComplete === undefined ? "off" : (this.props.autoComplete ? "on" : "off")}
+                    autoComplete={this.props.autoComplete === undefined ? "new-password" : (this.props.autoComplete ? "on" : "new-password")}
                     disabled={this.props.disabled === undefined ? false : this.props.disabled}
                     required={this.props.requiredValue ? this.props.requiredValue : false}
                     InputLabelProps={this.props.inputLabelProps}
@@ -91,7 +94,7 @@ class MythicTextField extends React.Component {
                     error={this.checkError()}
                     type={this.props.type === undefined ? "text" : this.props.type}
                     onWheel={ event => event.target.blur() }
-                    InputProps={this.props.InputProps}
+                    InputProps={{...this?.props?.InputProps, spellCheck: false}}
                     helperText={this.checkError() ? this.props.errorText : this.props.helperText}
                     style={{
                         padding:0,

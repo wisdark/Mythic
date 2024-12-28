@@ -10,11 +10,11 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
 import {useTheme} from '@mui/material/styles';
 import {snackActions} from '../../utilities/Snackbar';
 import {useMutation, gql, useSubscription} from '@apollo/client';
 import {MythicSnackDownload} from '../../MythicComponents/MythicSnackDownload';
+import {getSkewedNow} from "../../utilities/Time";
 
 const generateReportMutation = gql`
 mutation generateReportMutation($outputFormat: String!, $includeMITREPerTask: Boolean!, $includeMITREOverall: Boolean!, $excludedUsers: String!, $excludedHosts: String!, $excludedIDs: String!, $includeOutput: Boolean!){
@@ -33,7 +33,7 @@ subscription generatedReportEventSubscription($fromNow: timestamp!){
 `;
 export function ReportingTable(props){
     const theme = useTheme();
-    const fromNow = React.useRef( (new Date()).toISOString() );
+    const fromNow = React.useRef( (getSkewedNow()).toISOString() );
     const [selectedOutputFormat, setSelectedOutputFormat] = React.useState("html");
     const outputOptions = ["html", "json"];
     const [includeMITREPerTask, setIncludeMITREPerTask] = React.useState(false);
@@ -97,7 +97,7 @@ export function ReportingTable(props){
     return (
         <React.Fragment>
 
-        <TableContainer component={Paper} className="mythicElement">   
+        <TableContainer className="mythicElement">
             <Table  size="small" style={{"tableLayout": "fixed", "maxWidth": "calc(100vw)", "overflow": "scroll"}}>
                 <TableHead>
                     <TableRow>

@@ -18,15 +18,16 @@ const (
 )
 
 type PTRPCDynamicQueryFunctionMessage struct {
-	Command           string                 `json:"command" binding:"required"`
-	ParameterName     string                 `json:"parameter_name" binding:"required"`
-	PayloadType       string                 `json:"payload_type" binding:"required"`
-	PayloadOS         string                 `json:"payload_os"`
-	PayloadUUID       string                 `json:"payload_uuid"`
-	AgentCallbackID   string                 `json:"agent_callback_id"`
-	Callback          int                    `json:"callback" binding:"required"`
-	CallbackDisplayID int                    `json:"callback_display_id"`
-	Secrets           map[string]interface{} `json:"secrets"`
+	Command            string                 `json:"command" binding:"required"`
+	ParameterName      string                 `json:"parameter_name" binding:"required"`
+	PayloadType        string                 `json:"payload_type" binding:"required"`
+	CommandPayloadType string                 `json:"command_payload_type"`
+	PayloadOS          string                 `json:"payload_os"`
+	PayloadUUID        string                 `json:"payload_uuid"`
+	AgentCallbackID    string                 `json:"agent_callback_id"`
+	Callback           int                    `json:"callback" binding:"required"`
+	CallbackDisplayID  int                    `json:"callback_display_id"`
+	Secrets            map[string]interface{} `json:"secrets"`
 }
 
 type PTRPCDynamicQueryFunctionMessageResponse struct {
@@ -43,9 +44,11 @@ func (r *rabbitMQConnection) SendPtRPCDynamicQueryFunction(dynamicQuery PTRPCDyn
     	callback.agent_callback_id,
     	callback.display_id,
     	payload.os "payload.os",
-    	payload.uuid "payload.uuid"
+    	payload.uuid "payload.uuid",
+    	payloadtype.name "payload.payloadtype.name"
 	FROM callback
 	JOIN payload on callback.registered_payload_id = payload.id
+	JOIN payloadtype on payload.payload_type_id = payloadtype.id
 	WHERE callback.id=$1
     `, dynamicQuery.Callback)
 	if err != nil {
@@ -53,6 +56,7 @@ func (r *rabbitMQConnection) SendPtRPCDynamicQueryFunction(dynamicQuery PTRPCDyn
 	}
 	dynamicQuery.PayloadUUID = callback.Payload.UuID
 	dynamicQuery.PayloadOS = callback.Payload.Os
+	dynamicQuery.PayloadType = callback.Payload.Payloadtype.Name
 	dynamicQuery.AgentCallbackID = callback.AgentCallbackID
 	dynamicQuery.CallbackDisplayID = callback.DisplayID
 	configBytes, err := json.Marshal(dynamicQuery)
@@ -62,7 +66,7 @@ func (r *rabbitMQConnection) SendPtRPCDynamicQueryFunction(dynamicQuery PTRPCDyn
 	}
 	response, err := r.SendRPCMessage(
 		MYTHIC_EXCHANGE,
-		GetPtRPCDynamicQueryFunctionRoutingKey(dynamicQuery.PayloadType),
+		GetPtRPCDynamicQueryFunctionRoutingKey(dynamicQuery.CommandPayloadType),
 		configBytes,
 		exclusiveQueue,
 	)

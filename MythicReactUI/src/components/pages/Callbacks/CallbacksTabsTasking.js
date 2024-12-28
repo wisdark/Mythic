@@ -13,6 +13,7 @@ import {MythicModifyStringDialog} from '../../MythicComponents/MythicDialog';
 import { MythicStyledTooltip } from '../../MythicComponents/MythicStyledTooltip';
 import {taskingDataFragment, createTaskingMutation} from "./CallbackMutations";
 import { validate as uuidValidate } from 'uuid';
+import {getSkewedNow} from "../../utilities/Time";
 
 
 export function CallbacksTabsTaskingLabel(props){
@@ -51,7 +52,7 @@ export function CallbacksTabsTaskingLabel(props){
             {openEditDescriptionDialog &&
                 <MythicDialog fullWidth={true} open={openEditDescriptionDialog}  onClose={() => {setOpenEditDescriptionDialog(false);}}
                     innerDialog={
-                        <MythicModifyStringDialog title={"Edit Tab's Description"} onClose={() => {setOpenEditDescriptionDialog(false);}} value={description} onSubmit={editDescriptionSubmit} />
+                        <MythicModifyStringDialog title={"Edit Tab's Description - Displays as one line"} onClose={() => {setOpenEditDescriptionDialog(false);}} value={description} onSubmit={editDescriptionSubmit} />
                     }
                 />
             }
@@ -60,7 +61,7 @@ export function CallbacksTabsTaskingLabel(props){
 }
 
 // this is to listen for the latest tasking
-const fetchLimit = 10;
+const fetchLimit = 30;
 const getTaskingQuery = gql`
 ${taskingDataFragment}
 subscription getTasking($callback_id: Int!, $fromNow: timestamp!, $limit: Int){
@@ -81,13 +82,14 @@ query getBatchTasking($callback_id: Int!, $offset: Int!, $fetchLimit: Int!){
     }
 }
 `;
-export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, parentMountedRef, me}) =>{
-    const [taskLimit, setTaskLimit] = React.useState(10);
+export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, parentMountedRef, me, collapseTaskRequest}) =>{
+    const [taskLimit, setTaskLimit] = React.useState(20);
+    const [scrollToBottom, setScrollToBottom] = React.useState(false);
     const [openParametersDialog, setOpenParametersDialog] = React.useState(false);
     const [commandInfo, setCommandInfo] = React.useState({});
     const [taskingData, setTaskingData] = React.useState({task: []});
     const taskingDataRef = React.useRef({task: []});
-    const [fromNow, setFromNow] = React.useState((new Date()).toISOString());
+    const [fromNow, setFromNow] = React.useState(getSkewedNow().toISOString());
     const [selectedToken, setSelectedToken] = React.useState({});
     const [filterOptions, setFilterOptions] = React.useState({
         "operatorsList": [],
@@ -204,23 +206,11 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
     }
     useSubscription(getTaskingQuery, {
         variables: {callback_id: tabInfo.callbackID, fromNow:fromNow, limit: taskLimit},
-        shouldResubscribe: true,
         onError: data => {
             console.error(data)
         },
         fetchPolicy: "no-cache",
         onData: subscriptionDataCallback});
-    const scrollToBottom = useCallback( () => {
-        if(taskingData && messagesEndRef.current){
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-      }, [taskingData, messagesEndRef]);
-    useLayoutEffect( () => {
-        if(canScroll){
-            scrollToBottom();
-            setCanScroll(false);
-        }
-    }, [canScroll, scrollToBottom]);
     const [getInfiniteScrollTasking, {loading: loadingMore}] = useLazyQuery(getNextBatchTaskingQuery, {
         onError: data => {
             console.error(data);
@@ -259,6 +249,7 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
                     setFetchedAllTasks(false);
                 }
             }
+            if(!scrollToBottom){setScrollToBottom(true)}
         },
         fetchPolicy: "no-cache"
     });
@@ -270,6 +261,11 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+    useEffect( () => {
+        if(scrollToBottom){
+            messagesEndRef.current.scrollIntoView();
+        }
+    }, [scrollToBottom]);
     const loadMoreTasks = () => {
         getInfiniteScrollTasking({variables: {callback_id: tabInfo.callbackID, offset: taskingData.task.length, fetchLimit}});
     }
@@ -286,7 +282,13 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
         }
         if(cmd.commandparameters.length === 0){
             // if there are no parameters, just send whatever the user types along
-            onCreateTask({callback_id: tabInfo.displayID, command: cmd.cmd, params: params, parameter_group_name: "Default", tasking_location: newTaskingLocation});
+            onCreateTask({callback_id: tabInfo.displayID,
+                command: cmd.cmd,
+                params: params,
+                parameter_group_name: "Default",
+                tasking_location: newTaskingLocation,
+                payload_type: cmd.payloadtype?.name,
+            });
         }else{
             // check if there's a "file" component that needs to be displayed
             const fileParamExists = cmd.commandparameters.find(param => {
@@ -333,20 +335,28 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
                     params: JSON.stringify(parsed), 
                     tasking_location: newTaskingLocation, 
                     original_params: params, 
-                    parameter_group_name: cmdGroupNames[0]});
+                    parameter_group_name: cmdGroupNames[0],
+                    payload_type: cmd.payloadtype?.name,
+                });
             }            
         }
     }
-    const submitParametersDialog = (cmd, parameters, files, selectedParameterGroup) => {
+    const submitParametersDialog = (cmd, parameters, files, selectedParameterGroup, payload_type) => {
         setOpenParametersDialog(false);
-        onCreateTask({callback_id: tabInfo.displayID, command: cmd, params: parameters, files: files, tasking_location: "modal", parameter_group_name: selectedParameterGroup});
+        onCreateTask({callback_id: tabInfo.displayID,
+            command: cmd,
+            params: parameters,
+            files: files,
+            tasking_location: "modal",
+            parameter_group_name: selectedParameterGroup,
+            payload_type: payload_type
+        });
     }
-    const onCreateTask = ({callback_id, command, params, files, tasking_location, original_params, parameter_group_name}) => {
-        //console.log(selectedToken)
+    const onCreateTask = ({callback_id, command, params, files, tasking_location, original_params, parameter_group_name, payload_type}) => {
         if(selectedToken.token_id !== undefined){
-            createTask({variables: {callback_id, command, params, files, token_id: selectedToken.token_id, tasking_location, original_params, parameter_group_name}});
+            createTask({variables: {callback_id, command, params, files, token_id: selectedToken.token_id, tasking_location, original_params, parameter_group_name, payload_type}});
         }else{
-            createTask({variables: {callback_id, command, params, files, tasking_location, original_params, parameter_group_name}});
+            createTask({variables: {callback_id, command, params, files, tasking_location, original_params, parameter_group_name, payload_type}});
         }
     }
     const onSubmitFilter = (newFilter) => {
@@ -361,30 +371,44 @@ export const CallbacksTabsTaskingPanel = ({tabInfo, index, value, onCloseTab, pa
             setSelectedToken(token);
         }
     }
+    const [collapseAllRequest, setCollapseAllRequest] = React.useState(0);
+    React.useEffect( () => {
+        if(collapseTaskRequest[index] !== undefined){
+            setCollapseAllRequest(collapseAllRequest + 1);
+        }
+    }, [collapseTaskRequest]);
     return (
         <MythicTabPanel index={index} value={value} >
-            {!fetchedAllTasks && 
-                <MythicStyledTooltip title="Fetch Older Tasks"> 
-                    <IconButton
-                        onClick={loadMoreTasks}
-                        variant="contained"
-                        color="primary"
-                        style={{marginLeft: "50%"}}
-                        size="large"><AutorenewIcon /></IconButton>
-                </MythicStyledTooltip>}
             {!fetched && <LinearProgress color="primary" thickness={2} style={{paddingTop: "5px"}}/>}
             {loadingMore && <LinearProgress color="primary" thickness={2} style={{paddingTop: "5px"}}/>}
-            <div style={{overflowY: "auto", flexGrow: 1}}>
-            {
-                taskingData.task.map( (task) => (
-                    <TaskDisplay key={"taskinteractdisplay" + task.id} me={me} task={task} command_id={task.command == null ? 0 : task.command.id} 
-                        filterOptions={filterOptions} newlyIssuedTasks={newlyIssuedTasks.current}/>
-                ))
-            }
+            <div style={{overflowY: "auto", flexGrow: 1, width: "100%"}} id={`taskingPanel${tabInfo.callbackID}`}>
+                {!fetchedAllTasks &&
+                    <MythicStyledTooltip style={{marginLeft: "50%"}} title="Fetch Older Tasks">
+                        <IconButton
+                            onClick={loadMoreTasks}
+                            variant="contained"
+                            color="success"
+                            size="large"><AutorenewIcon/></IconButton>
+                    </MythicStyledTooltip>}
+                {
+                    taskingData.task.map((task) => (
+                        <TaskDisplay key={"taskinteractdisplay" + task.id} me={me} task={task}
+                                     command_id={task.command == null ? 0 : task.command.id}
+                                     collapseAllRequest={collapseAllRequest}
+                                     filterOptions={filterOptions} newlyIssuedTasks={newlyIssuedTasks.current}/>
+                    ))
+                }
+                <div ref={messagesEndRef}/>
             </div>
-            <div ref={messagesEndRef} />
-        <CallbacksTabsTaskingInput filterTasks={true} me={me} onSubmitFilter={onSubmitFilter} onSubmitCommandLine={onSubmitCommandLine} changeSelectedToken={changeSelectedToken}
-            filterOptions={filterOptions} callback_id={tabInfo.callbackID} callback_os={tabInfo.os} parentMountedRef={mountedRef} />
+
+            <CallbacksTabsTaskingInput filterTasks={true} me={me}
+                                       onSubmitFilter={onSubmitFilter}
+                                       onSubmitCommandLine={onSubmitCommandLine}
+                                       changeSelectedToken={changeSelectedToken}
+                                       filterOptions={filterOptions}
+                                       callback_id={tabInfo.callbackID}
+                                       payloadtype_name={tabInfo.payloadtype}
+                                       callback_os={tabInfo.os} parentMountedRef={mountedRef} />
         {openParametersDialog && 
             <MythicDialog fullWidth={true} maxWidth="lg" open={openParametersDialog} 
                 onClose={()=>{setOpenParametersDialog(false);}} 

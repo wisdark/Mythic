@@ -3,24 +3,27 @@ import { styled } from '@mui/material/styles';
 import {IconButton, Link} from '@mui/material';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import { toLocalTime } from '../../utilities/Time';
+import {getSkewedNow, toLocalTime} from '../../utilities/Time';
 import Accordion from '@mui/material/Accordion';
-import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
 import Badge from '@mui/material/Badge';
 import {useTheme} from '@mui/material/styles';
-import {gql, useLazyQuery, useSubscription } from '@apollo/client';
+import {gql, useSubscription } from '@apollo/client';
 import {TaskDisplayContainer, TaskDisplayContainerConsole} from './TaskDisplayContainer';
 import {TagsDisplay} from '../../MythicComponents/MythicTag';
 import {taskingDataFragment} from './CallbackMutations';
-import {useMythicSetting} from "../../MythicComponents/MythicSavedUserSetting";
+import {GetMythicSetting} from "../../MythicComponents/MythicSavedUserSetting";
+import PlayCircleFilledTwoToneIcon from '@mui/icons-material/PlayCircleFilledTwoTone';
+import CropRotateTwoToneIcon from '@mui/icons-material/CropRotateTwoTone';
+import {MythicStyledTooltip} from "../../MythicComponents/MythicStyledTooltip";
 
 
 const PREFIX = 'TaskDisplay';
 const ACCORDION_PREFIX = 'TaskDisplayAccordion';
-const classes = {
+export const classes = {
   root: `${PREFIX}-root`,
   heading: `${PREFIX}-heading`,
   secondaryHeading: `${PREFIX}-secondaryHeading`,
@@ -30,133 +33,84 @@ const classes = {
   details: `${PREFIX}-details`,
   column: `${PREFIX}-column`
 };
-const accordionClasses = {
+export const accordionClasses = {
   root: `${ACCORDION_PREFIX}-root`,
   content: `${ACCORDION_PREFIX}-content`,
   expandIcon: `${ACCORDION_PREFIX}-expandIcon`,
   expanded: `${ACCORDION_PREFIX}-expanded`,
+  details: `${ACCORDION_PREFIX}-details`,
+  detailsRoot: `${ACCORDION_PREFIX}Details-root`
 }
 
-const StyledPaper = styled(Paper)((
+export const StyledPaper = styled(Paper)((
   {
     theme
   }
 ) => ({
   [`&.${classes.root}`]: {
     marginTop: "3px",
-    marginLeft: "3px",
     marginRight: "0px",
     height: "auto",
     width: "99%",
     boxShadow: "unset",
+    backgroundColor: theme.palette.background.taskLabel,
   },
 
   [`& .${classes.heading}`]: {
     fontSize: theme.typography.pxToRem(15),
-    display: "inline",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    display: "-webkit-box",
+    WebkitLineClamp: "2",
+    WebkitBoxOrient: "vertical",
     cursor: "default",
     wordBreak: "break-all",
   },
-
   [`& .${classes.secondaryHeading}`]: {
     fontSize: theme.typography.pxToRem(15),
     //color: theme.palette.text.secondary,
-    overflow: "auto", 
-    display: "block", 
-    textOverflow: "ellipsis", 
+    overflow: "auto",
+    display: "block",
+    textOverflow: "ellipsis",
     wordBreak: "break-all",
-    maxWidth: "100%", 
+    maxWidth: "100%",
   },
-
   [`& .${classes.taskAndTimeDisplay}`]: {
     fontSize: theme.typography.pxToRem(12),
     color: theme.palette.text.secondary,
-    overflow: "hidden", 
-    textOverflow: "ellipsis", 
-    maxWidth: "100%", 
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "100%",
     whiteSpace: "nowrap",
     display: "inline-block",
     cursor: "default",
     wordBreak: "break-all",
   },
-
   [`& .${classes.secondaryHeadingExpanded}`]: {
     fontSize: theme.typography.pxToRem(15),
     //color: theme.palette.text.secondary,
-    display: "block", 
+    display: "block",
     overflow: "auto",
-    maxWidth: "100%", 
-    whiteSpace: "break-all",
+    maxWidth: "100%",
     wordBreak: "break-all",
   },
-
   [`& .${classes.icon}`]: {
     verticalAlign: 'middle',
     height: 20,
     width: 20,
   },
-
   [`& .${classes.details}`]: {
     alignItems: 'center',
     marginRight: 0
   },
-
   [`& .${classes.column}`]: {
     padding: "0 5px 0 0",
     display: "inline-block",
     margin: 0,
-    height: "auto"
+    height: "auto",
   }
 }));
 
-/*
-export const taskDataFragment = gql`
-    fragment taskData on task {
-        comment
-        callback_id
-        commentOperator{
-            username
-        }
-        completed
-        id
-        display_id
-        operator{
-            username
-        }
-        original_params
-        display_params
-        status
-        timestamp
-        command {
-          cmd
-          supported_ui_features
-          id
-        }
-        command_name
-        response_count
-        opsec_pre_blocked
-        opsec_pre_bypassed
-        opsec_post_blocked
-        opsec_post_bypassed
-        tasks {
-            id
-        }
-        tags {
-          tagtype {
-              name
-              color
-              id
-            }
-          id
-        }
-        token {
-            id
-        }
-    }
-`;
-
- */
-// task(where: {parent_task_id: {_eq: $task_id}}, order_by: {id: asc}) {
 const getSubTaskingQuery = gql`
 ${taskingDataFragment}
 subscription getSubTasking($task_id: Int!){
@@ -166,7 +120,7 @@ subscription getSubTasking($task_id: Int!){
 }
  `;
 
-const StyledAccordionSummary = styled(AccordionSummary)((
+export const StyledAccordionSummary = styled(AccordionSummary)((
     {
       theme
     }
@@ -180,6 +134,7 @@ const StyledAccordionSummary = styled(AccordionSummary)((
     wordBreak: "break-all",
     userSelect: "text",
     boxShadow: "unset",
+    backgroundColor: "unset",
   },
   [`& .${accordionClasses.content}`]: {
     margin: 0,
@@ -190,14 +145,15 @@ const StyledAccordionSummary = styled(AccordionSummary)((
     margin: 0,
   },
   [`& .${accordionClasses.expanded}`]: {
-    marginRight: 0
+    marginRight: 0,
   },
 }));
 
-function TaskDisplayPreMemo({task, me, filterOptions, newlyIssuedTasks}){
+
+function TaskDisplayPreMemo({task, me, filterOptions, newlyIssuedTasks, collapseAllRequest}){
   return (
       <TaskRow me={me} task={task} newlyIssuedTasks={newlyIssuedTasks} filterOptions={filterOptions}
-               indentLevel={0} />
+               indentLevel={0} collapseAllRequest={collapseAllRequest} />
   );
 }
 export const TaskDisplay = React.memo(TaskDisplayPreMemo);
@@ -219,21 +175,21 @@ function TaskDisplayConsolePreMemo({task, me, filterOptions, newlyIssuedTasks}){
 export const TaskDisplayConsole = React.memo(TaskDisplayConsolePreMemo);
 const TaskStatusDisplay = ({task, theme}) => {
   if(task.status.toLowerCase().includes("error")){
-    return (<Typography size="small" component="span" style={{padding: "0", color: theme.palette.error.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
+    return (<Typography size="small" component="span" style={{color: theme.palette.error.main, display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
   }else if(task.status === "cleared"){
-    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>cleared</Typography>)
+    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main,  display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>cleared</Typography>)
   }else if(task.status === "completed" || task.status === "success"){
     return null//return (<Typography size="small" style={{padding: "0", color: theme.palette.success.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>completed</Typography>)
   }else if(task.status === "submitted"){
-    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.info.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
+    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.info.main, display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
   }else if(task.status.toLowerCase().includes("processing")){
-    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
+    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main, display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
   }else if(task.opsec_pre_blocked && !task.opsec_pre_bypassed){
-    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>OPSEC BLOCKED (PRE)</Typography>)
+    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main,  display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>OPSEC BLOCKED (PRE)</Typography>)
   }else if(task.opsec_post_blocked && !task.opsec_post_bypassed){
-    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>OPSEC BLOCKED (POST)</Typography>)
+    return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.warning.main,  display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>OPSEC BLOCKED (POST)</Typography>)
   }else{
-      return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.info.main, marginLeft: "5%", display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
+      return (<Typography size="small" component="span"  style={{padding: "0", color: theme.palette.info.main,  display: "inline-block", fontSize: theme.typography.pxToRem(15)}}>{task.status.toLowerCase()}</Typography>)
   }
 }
 const TaskTagDisplay = ({task}) => {
@@ -241,7 +197,7 @@ const TaskTagDisplay = ({task}) => {
     <TagsDisplay tags={task.tags} />
   )
 }
-const ColoredTaskDisplay = ({task, theme, children}) => {
+const ColoredTaskDisplay = ({task, theme, children, expanded}) => {
   const [themeColor, setThemeColor] = React.useState(theme.palette.info.main);
   useEffect( () => {
     if(task.status.toLowerCase().includes("error")){
@@ -263,19 +219,25 @@ const ColoredTaskDisplay = ({task, theme, children}) => {
     }
   }, [task.status, task.completed])
     return(
-      <span style={{display: "flex", margin: 0, borderWidth: 0, padding: 0, minHeight: "48px", alignItems: "center", height: "100%", borderLeft: "6px solid " + themeColor, paddingLeft: "5px", width: "100%"}}>
+      <span style={{display: "flex", margin: 0, borderWidth: 0, padding: 0, minHeight: "48px", alignItems: "center", height: "100%", borderLeft: "6px solid " + themeColor, paddingLeft: "5px", width: "100%", borderTopLeftRadius: "4px", borderBottomLeftRadius: expanded ? 0 : "4px"}}>
         {children}
       </span>
     )
 }
-const ColoredTaskLabel = ({task, theme, me, taskDivID, onClick }) => {
+const GetOperatorDisplay = ({initialHideUsernameValue, task}) => {
+  if(initialHideUsernameValue){
+    return '';
+  }
+  return "/ " + task.operator.username;
+}
+export const ColoredTaskLabel = ({task, theme, me, taskDivID, onClick, displayChildren, toggleDisplayChildren, expanded }) => {
   const [displayComment, setDisplayComment] = React.useState(false);
   const [alertBadges, setAlertBadges] = React.useState(0);
-  const initialHideUsernameValue = useMythicSetting({setting_name: "hideUsernames", default_value: "false"});
-  const initialShowIPValue = useMythicSetting({setting_name: "showIP", default_value: "false"});
+  const initialHideUsernameValue = GetMythicSetting({setting_name: "hideUsernames", default_value: false});
+  const initialShowIPValue = GetMythicSetting({setting_name: "showIP", default_value: false});
   const ipValue = JSON.parse(task.callback.ip)[0];
-  const initialShowHostnameValue = useMythicSetting({setting_name: "showHostname", default_value: "false"});
-  const initialShowCallbackGroupsValue = useMythicSetting({setting_name: "showCallbackGroups", default_value: "false"});
+  const initialShowHostnameValue = GetMythicSetting({setting_name: "showHostname", default_value: false});
+  const initialShowCallbackGroupsValue = GetMythicSetting({setting_name: "showCallbackGroups", default_value: false});
   const toggleDisplayComment = (evt) => {
     evt.stopPropagation();
     setDisplayComment(!displayComment);
@@ -288,10 +250,11 @@ const ColoredTaskLabel = ({task, theme, me, taskDivID, onClick }) => {
     if(onClick){
       onClick(e);
     }
-    preventPropagation(e);
+    //preventPropagation(e);
   }
+
   return (
-      <ColoredTaskDisplay task={task} theme={theme}  >
+      <ColoredTaskDisplay task={task} theme={theme} expanded={expanded}  >
         <div id={taskDivID} style={{width: "100%"}}>
           {displayComment ? (
               <React.Fragment>
@@ -299,29 +262,88 @@ const ColoredTaskLabel = ({task, theme, me, taskDivID, onClick }) => {
                 <Typography className={classes.heading} onClick={preventPropagation}>{task.comment}</Typography>
               </React.Fragment>
           ) : null}
-          <div >
+          <div style={{lineHeight: 0}}>
             <Typography className={classes.taskAndTimeDisplay} onClick={preventPropagation}>
               [{toLocalTime(task.timestamp, me?.user?.view_utc_time || false)}]
-              / {task.display_id} {initialHideUsernameValue ? '' : `/ ${task.operator.username} `}
-              / <Link style={{wordBreak: "break-all"}} color="textPrimary" underline="always" target="_blank" href={"/new/callbacks/" + task.callback.display_id}>{ task.callback.display_id}</Link>
+              {" / "}
+              <span style={{}}>
+                  {task.has_intercepted_response &&
+                      <>
+                        <MythicStyledTooltip
+                            title={"This task has responses that have been intercepted and changed due to a workflow container"}>
+                          <IconButton style={{padding: 0}} color={"secondary"}>
+                            <CropRotateTwoToneIcon fontSize={"small"}/>
+                          </IconButton>
+
+                        </MythicStyledTooltip>
+                        {"/ "}
+                      </>
+                  }
+                {task?.eventstepinstance !== null &&
+                    <>
+                      <MythicStyledTooltip title={"Task created via Eventing, click to view entire event flow in separate page"} >
+                        <IconButton component={Link} href={'/new/eventing?eventgroup=' +
+                            task?.eventstepinstance?.eventgroupinstance?.eventgroup?.id +
+                            "&eventgroupinstance=" + task?.eventstepinstance?.eventgroupinstance?.id
+                        } target={"_blank"} style={{padding: 0}}
+                                    color="inherit" disableFocusRipple={true}
+                                    disableRipple={true}>
+                          <PlayCircleFilledTwoToneIcon />
+                        </IconButton>
+                      </MythicStyledTooltip>
+
+                      {"/  "}
+                    </>
+                }
+                  <MythicStyledTooltip title={"View Task in separate page"} >
+                    <Link style={{wordBreak: "break-all"}} color={"textPrimary"} underline={"always"} target={"_blank"}
+                          href={"/new/task/" + task.display_id}>{task.display_id}</Link>
+                  </MythicStyledTooltip>
+
+              </span>
+              {" "}
+              <GetOperatorDisplay initialHideUsernameValue={initialHideUsernameValue} task={task}/>
+              {" / "}
+              <MythicStyledTooltip title={"View Callback in separate page"}>
+                <Link style={{wordBreak: "break-all"}} color="textPrimary" underline="always" target="_blank"
+                      href={"/new/callbacks/" + task.callback.display_id}>{task.callback.display_id}</Link>
+              </MythicStyledTooltip>
+
               {initialShowHostnameValue ? ` / ${task.callback.host} ` : ''}
               {initialShowIPValue ? `/ ${ipValue} ` : ''}
               {initialShowCallbackGroupsValue ? `/ ${task.callback.mythictree_groups.join(', ')} ` : ''}
+              {" / "}
+              {task?.command?.payloadtype?.name}
+              {" / "}
+              <TaskStatusDisplay task={task} theme={theme}/>
+              {task.comment.length > 0 ? (
+                  <span className={classes.column}>
+                    <IconButton size="small" style={{padding: "0"}}
+                                onClick={toggleDisplayComment}><ChatOutlinedIcon fontSize={"small"}/></IconButton>
+                  </span>
+              ) : null}
+              {task.comment}
             </Typography>
-            <TaskStatusDisplay task={task} theme={theme}/>
-            <TaskTagDisplay task={task} />
+            <TaskTagDisplay task={task}/>
           </div>
           <div>
-            {task.comment !== "" ? (
-                <div className={classes.column}>
-                  <IconButton size="small" style={{padding: "0"}} color="primary" onClick={toggleDisplayComment}><ChatOutlinedIcon/></IconButton>
-                </div>
-            ) : null}
+
             <div className={classes.column} onClick={onLocalClick}>
               <Badge badgeContent={alertBadges} color="warning" anchorOrigin={{vertical: 'top', horizontal: 'left'}}>
-                <Typography className={classes.heading} onClick={onLocalClick}>
-                  {(task?.command?.cmd || task.command_name) + " " + task.display_params}
-                </Typography>
+                {task.tasks.length > 0 && !displayChildren &&
+                    <ExpandMoreIcon onClick={toggleDisplayChildren} />
+                }
+                {task.tasks.length > 0 && displayChildren &&
+                    <ExpandLessIcon onClick={toggleDisplayChildren} />
+                }
+                <MythicStyledTooltip maxWidth={"calc(80vw)"}
+                                     enterDelay={2000}
+                    placement={"top"}
+                    title={(task?.command?.cmd || task.command_name) + " " + task.display_params} >
+                  <Typography className={classes.heading} onClick={onLocalClick} >
+                    {(task?.command?.cmd || task.command_name) + " " + task.display_params}
+                  </Typography>
+                </MythicStyledTooltip>
               </Badge>
             </div>
           </div>
@@ -329,10 +351,11 @@ const ColoredTaskLabel = ({task, theme, me, taskDivID, onClick }) => {
       </ColoredTaskDisplay>
   )
 }
-const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}) => {
+const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel, collapseAllRequest}) => {
 	const [dropdownOpen, setDropdownOpen] = React.useState(false);
     const [taskingData, setTaskingData] = React.useState([]);
     const [shouldDisplay, setShouldDisplay] = React.useState(true);
+    const [displayChildren, setDisplayChildren] = React.useState(false);
     useSubscription(getSubTaskingQuery, {
       variables: {task_id: task.id},
       onData:  ({data}) => {
@@ -413,7 +436,7 @@ const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}) => {
         }
       }
       if(filterOptions["hideErrors"]){
-        if(task.status.includes("error")){
+        if(task.status.toLowerCase().includes("error")){
           if(shouldDisplay){
             setShouldDisplay(false);
           }
@@ -423,13 +446,24 @@ const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}) => {
       if(!shouldDisplay){
         setShouldDisplay(true);
       }
-    }, [filterOptions, task.comment, task.command, task.display_params, task.operator.username]);
+    }, [filterOptions, task.comment, task.command, task.status, task.display_params, task.operator.username]);
     const toggleTaskDropdown = React.useCallback( (event, expanded) => {
       if(window.getSelection().toString() !== ""){
         return;
       }
       setDropdownOpen(!dropdownOpen);
     }, [dropdownOpen]);
+    const toggleDisplayChildren = React.useCallback( (event, expanded) => {
+      if(window.getSelection().toString() !== ""){
+        return;
+      }
+      setDisplayChildren(!displayChildren);
+    }, [displayChildren]);
+    useEffect( () => {
+      if(collapseAllRequest > 0){
+        setDropdownOpen(false);
+      }
+    }, [collapseAllRequest]);
     /*
     useEffect( () => {
       if(!isFetchingSubtasks && task.tasks.length > 0){
@@ -441,8 +475,9 @@ const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}) => {
       shouldDisplay ? (
           <div style={{marginLeft: (indentLevel * 10) + "px"}}>
             <TaskLabel me={me} task={task} newlyIssuedTasks={newlyIssuedTasks} dropdownOpen={dropdownOpen}
-                       toggleTaskDropdown={toggleTaskDropdown}/>
-            {
+                       toggleTaskDropdown={toggleTaskDropdown}
+                       toggleDisplayChildren={toggleDisplayChildren} displayChildren={displayChildren}/>
+            { displayChildren &&
               taskingData.map( (tsk) => (
                   <TaskRow key={"taskrow: " + tsk.id} me={me} task={tsk}
                            filterOptions={filterOptions} indentLevel={indentLevel+1}/>
@@ -456,6 +491,7 @@ const TaskRow = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}) => {
 const TaskRowFlat = ({task, filterOptions, me, onSelectTask, showOnSelectTask, selectedTask, indentLevel}) => {
   const [taskingData, setTaskingData] = React.useState([]);
   const [shouldDisplay, setShouldDisplay] = React.useState(true);
+  const [displayChildren, setDisplayChildren] = React.useState(false);
   useSubscription(getSubTaskingQuery, {
     variables: {task_id: task.id},
     onData:  ({data}) => {
@@ -563,15 +599,23 @@ const TaskRowFlat = ({task, filterOptions, me, onSelectTask, showOnSelectTask, s
     }
     setTaskingData(updated)
   }, [selectedTask]);
+  const toggleDisplayChildren = React.useCallback( (event, expanded) => {
+    if(window.getSelection().toString() !== ""){
+      return;
+    }
+    setDisplayChildren(!displayChildren);
+    event.stopPropagation();
+    event.preventDefault();
+  }, [displayChildren]);
   return (
       shouldDisplay && (
           <div style={{marginLeft: (indentLevel * 10) + "px"}}>
             <TaskLabelFlat me={me} task={task}
                            onSelectTask={() => {onSelectTask(task)}}
                            showOnSelectTask={showOnSelectTask}
-
+                           toggleDisplayChildren={toggleDisplayChildren} displayChildren={displayChildren}
             />
-            {
+            { displayChildren &&
               taskingData.map( (tsk) => (
                   <TaskRowFlat key={"taskrow: " + tsk.id} indentLevel={indentLevel+1}
                                me={me} task={tsk} onSelectTask={()=>{onSelectTask(tsk)}}
@@ -685,13 +729,7 @@ const TaskRowConsole = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}
     }
     setDropdownOpen(!dropdownOpen);
   }, [dropdownOpen]);
-  /*
-  useEffect( () => {
-    if(!isFetchingSubtasks && task.tasks.length > 0){
-      getSubTasks();
-    }
-  }, [task.tasks]);
-  */
+
   return (
       shouldDisplay ? (
           <div style={{marginLeft: (indentLevel * 10) + "px"}}>
@@ -708,16 +746,10 @@ const TaskRowConsole = ({task, filterOptions, me, newlyIssuedTasks, indentLevel}
   )
 }
 
-const TaskLabel = ({task, dropdownOpen, toggleTaskDropdown, me, newlyIssuedTasks}) => {
-  const [fromNow, setFromNow] = React.useState(new Date());
+const TaskLabel = ({task, dropdownOpen, toggleTaskDropdown, me, newlyIssuedTasks, displayChildren, toggleDisplayChildren}) => {
+  const [fromNow, setFromNow] = React.useState(getSkewedNow());
   const theme = useTheme();
   const prevResponseMaxId = useRef(0);
-  // only scroll down for your own tasks
-  useLayoutEffect( () => {
-    if(task.operator.username === (me?.user?.username || "")){
-      scrollContent();
-    }
-  }, [])
   useEffect( () => {
     //console.log("in use effect", prevResponseCount.current, props.task.responses);
     let currentData = task.response_count;
@@ -743,29 +775,35 @@ const TaskLabel = ({task, dropdownOpen, toggleTaskDropdown, me, newlyIssuedTasks
   const scrollContent = (node, isAppearing) => {
     // only auto-scroll if you issued the task
     if(task.operator.username === (me?.user?.username || "")){
-      document.getElementById(`scrolltotask${task.id}`).scrollIntoView({
-        //behavior: "smooth",
-        block: "start",
-        inline: "start"
-      })
+      let el = document.getElementById(`taskingPanel${task.callback_id}`);
+      if(el && el.scrollHeight - el.scrollTop - el.clientHeight < 100){
+        document.getElementById(`scrolltotask${task.id}`)?.scrollIntoView({
+          //behavior: "smooth",
+          block: "start",
+          inline: "start"
+        });
+      }
     }
-    
   }
 
   return (
-    <StyledPaper className={classes.root + " no-box-shadow"} elevation={5} style={{marginRight: 0}} id={`taskHeader-${task.id}`}>
-      <Accordion TransitionProps={{ unmountOnExit: true, onEntered: scrollContent }} defaultExpanded={false} onChange={toggleTaskDropdown} expanded={dropdownOpen}  >
+    <StyledPaper className={classes.root + " no-box-shadow"} elevation={5}  id={`taskHeader-${task.id}`}>
+      <Accordion TransitionProps={{ unmountOnExit: true, onEnter: scrollContent }} defaultExpanded={false}
+                 onChange={toggleTaskDropdown} expanded={dropdownOpen}
+                 style={{backgroundColor: "unset", backgroundImage: "unset"}}
+      >
         <StyledAccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls={`panel1c-content-task-${task.id}`}
           id={`panel1c-header-${task.id}`}
           classes={accordionClasses}
-        >  
-          <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={'scrolltotask' + task.id} />
+        >
+          <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={'scrolltotask' + task.id}
+            displayChildren={displayChildren} toggleDisplayChildren={toggleDisplayChildren}
+                            expanded={dropdownOpen}
+          />
         </StyledAccordionSummary>
-        <AccordionDetails style={{cursor: "default"}}>
-          <TaskDisplayContainer me={me} task={task} />
-        </AccordionDetails>
+        <TaskDisplayContainer me={me} task={task} />
       </Accordion>
   </StyledPaper>
   );
@@ -779,7 +817,7 @@ export const getLabelText = (task, graphView) => {
   }
   return (task?.command?.cmd || task.command_name) + " " + task.display_params;
 }
-export const TaskLabelFlat = ({task, me, showOnSelectTask, onSelectTask, graphView}) => {
+export const TaskLabelFlat = ({task, me, showOnSelectTask, onSelectTask, graphView, displayChildren, toggleDisplayChildren}) => {
   const theme = useTheme();
 
   useLayoutEffect( () => {
@@ -791,11 +829,14 @@ export const TaskLabelFlat = ({task, me, showOnSelectTask, onSelectTask, graphVi
   const scrollContent = (node, isAppearing) => {
     // only auto-scroll if you issued the task
     if(task.operator.username === (me?.user?.username || "")){
-      document.getElementById(`scrolltotasksplit${task.id}`).scrollIntoView({
-        //behavior: "smooth",
-        block: "start",
-        inline: "start"
-      })
+      let el = document.getElementById(`taskingPanelSplit${task.callback_id}`);
+      if(el && el.scrollHeight - el.scrollTop - el.clientHeight < 100){
+        document.getElementById(`scrolltotasksplit${task.id}`)?.scrollIntoView({
+          //behavior: "smooth",
+          block: "start",
+          inline: "start"
+        });
+      }
     }
 
   }
@@ -811,7 +852,9 @@ export const TaskLabelFlat = ({task, me, showOnSelectTask, onSelectTask, graphVi
                    elevation={5} style={{marginRight: 0, cursor: "pointer"}} id={`taskHeader-${task.id}`}
                    onClick={onClickEntry}
       >
-        <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={`scrolltotasksplit${task.id}`} onClick={onClickEntry} />
+        <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={`scrolltotasksplit${task.id}`} onClick={onClickEntry}
+                          displayChildren={displayChildren} toggleDisplayChildren={toggleDisplayChildren} expanded={false}
+        />
       </StyledPaper>
   )
 }
@@ -825,18 +868,21 @@ const TaskLabelConsole = ({task, me}) => {
   const scrollContent = (node, isAppearing) => {
     // only auto-scroll if you issued the task
     if(task.operator.username === (me?.user?.username || "")){
-      document.getElementById(`scrolltotaskconsole${task.id}`).scrollIntoView({
-        //behavior: "smooth",
-        block: "start",
-        inline: "start"
-      })
+      let el = document.getElementById(`taskingPanelConsole${task.callback_id}`);
+      if(el && el.scrollHeight - el.scrollTop - el.clientHeight < 100){
+        document.getElementById(`scrolltotaskconsole${task.id}`)?.scrollIntoView({
+          //behavior: "smooth",
+          block: "start",
+          inline: "start"
+        });
+      }
     }
 
   }
 
   return (
       <StyledPaper className={classes.root + " no-box-shadow"} elevation={5} style={{marginRight: 0}} id={`taskHeader-${task.id}`}>
-          <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={`scrolltotaskconsole${task.id}`} />
+          <ColoredTaskLabel theme={theme} task={task} me={me} taskDivID={`scrolltotaskconsole${task.id}`} expanded={true}/>
           <TaskDisplayContainerConsole me={me} task={task} />
       </StyledPaper>
   );

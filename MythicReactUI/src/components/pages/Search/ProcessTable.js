@@ -6,7 +6,6 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
 import { MythicDialog, MythicModifyStringDialog, MythicViewJSONAsTableDialog } from '../../MythicComponents/MythicDialog';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { gql, useMutation } from '@apollo/client';
@@ -40,14 +39,14 @@ export function ProcessTable(props){
         setFiles(updates);
     }
     return (
-        <TableContainer component={Paper} className="mythicElement" >
+        <TableContainer className="mythicElement" >
             <Table stickyHeader size="small" style={{"tableLayout": "fixed", "maxWidth": "100%", "overflow": "scroll"}}>
                 <TableHead>
                     <TableRow>
                         <TableCell style={{width: "5rem"}}>Metadata</TableCell>
-                        <TableCell style={{width: "5rem"}}> PID </TableCell>
+                        <TableCell style={{width: "6rem"}}> PID </TableCell>
                         <TableCell >Info</TableCell>
-                        <TableCell> Name</TableCell>
+                        <TableCell >Name</TableCell>
                         <TableCell style={{width: "15rem"}}>Comment</TableCell>
                         <TableCell style={{width: "10rem"}}>Tags</TableCell>
 
@@ -95,7 +94,7 @@ function ProcessTableRow(props){
                 />
                 }
                 <MythicStyledTableCell>
-                    <Button color="primary" variant="contained" onClick={() => setViewPermissionsDialogOpen(true)}><PlaylistAddCheckIcon /></Button>
+                    <Button color="info"  onClick={() => setViewPermissionsDialogOpen(true)}><PlaylistAddCheckIcon /></Button>
                 </MythicStyledTableCell>
                 <MythicStyledTableCell>
                     <Typography variant="body2" style={{wordBreak: "break-all", textDecoration: props.deleted ? "strike-through" : ""}}>{props.full_path_text}</Typography>
@@ -123,6 +122,9 @@ function ProcessTableRow(props){
 
                 <MythicStyledTableCell>
                     <Typography variant="body2" style={{wordBreak: "break-all"}}>{props.name_text}</Typography>
+                    {props.deleted &&
+                        <Typography variant="body2" style={{wordBreak: "break-all"}}>{" (deleted)"}</Typography>
+                    }
                 </MythicStyledTableCell>
                 <MythicStyledTableCell>
                     <IconButton onClick={() => setEditCommentDialogOpen(true)} size="small" style={{display: "inline-block"}}><EditIcon /></IconButton>

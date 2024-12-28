@@ -5,44 +5,27 @@ import Button from '@mui/material/Button';
 import React from 'react';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import Grow from '@mui/material/Grow';
-import Popper from '@mui/material/Popper';
-import MenuItem from '@mui/material/MenuItem';
-import MenuList from '@mui/material/MenuList';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
-import Paper from '@mui/material/Paper';
-import {useTheme} from '@mui/material/styles';
 import SnoozeIcon from '@mui/icons-material/Snooze';
+import {Dropdown, DropdownMenuItem} from "../MythicComponents/MythicNestedMenus";
+import {getSkewedNow} from "./Time";
 
 export const CloseButton = ({ closeToast }) => {
-  const theme = useTheme();
   const dropdownAnchorRef = React.useRef(null);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const dndWithTime = (doNotDisturbMinutes) => {
     localStorage.setItem("dnd", JSON.stringify({
       "doNotDisturb": true,
-      "doNotDisturbTimeStart": new Date(),
+      "doNotDisturbTimeStart": getSkewedNow(),
       "doNotDisturbMinutes": doNotDisturbMinutes
     }))
     snackActions.clearAll()
   }
   const dropDownOptions = [
     {
-      name: <div><AlarmIcon /> 1min</div>,
-      click: () => {
-        dndWithTime(1);
-      }
-    },
-    {
       name: <div><AlarmIcon /> 5min</div>,
       click: () => {
         dndWithTime(5);
-      }
-    },
-    {
-      name: <div><AlarmIcon /> 10min</div>,
-      click: () => {
-        dndWithTime(10);
       }
     },
     {
@@ -52,9 +35,21 @@ export const CloseButton = ({ closeToast }) => {
       }
     },
     {
-      name: <div><SnoozeIcon /> 1 year</div>,
+      name: <div><AlarmIcon /> 1hr</div>,
       click: () => {
-        dndWithTime(60 * 24 * 365);
+        dndWithTime(60);
+      }
+    },
+    {
+      name: <div><AlarmIcon /> 4hr</div>,
+      click: () => {
+        dndWithTime(60 * 4);
+      }
+    },
+    {
+      name: <div><SnoozeIcon /> 24hr</div>,
+      click: () => {
+        dndWithTime(60 * 24);
       }
     },
   ]
@@ -79,31 +74,26 @@ export const CloseButton = ({ closeToast }) => {
                 <NotificationsPausedIcon color={"error"} /> <ArrowDropDownIcon />
               </Button>
             </ButtonGroup>
-            <Popper open={dropdownOpen} anchorEl={dropdownAnchorRef.current} role={undefined} transition style={{zIndex: 10000}}>
-              {({ TransitionProps, placement }) => (
-                  <Grow
-                      {...TransitionProps}
-                      style={{
-                        transformOrigin: placement === 'bottom' ? 'center top' : 'center bottom',
-                      }}
-                  >
-                    <Paper style={{backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.dark : theme.palette.primary.light, color: "white"}}>
-                      <ClickAwayListener onClickAway={() => setDropdownOpen(false)}>
-                        <MenuList id="split-button-menu">
-                          {dropDownOptions.map((option, index) => (
-                              <MenuItem
-                                  key={"index" + index}
-                                  onClick={(event) => handleMenuItemClick(event, index)}
-                              >
-                                {option.name}
-                              </MenuItem>
-                          ))}
-                        </MenuList>
-                      </ClickAwayListener>
-                    </Paper>
-                  </Grow>
-              )}
-            </Popper>
+              {dropdownOpen &&
+                  <ClickAwayListener  mouseEvent={"onMouseDown"}
+                      onClickAway={() => setDropdownOpen(false)}>
+                    <Dropdown
+                        isOpen={dropdownAnchorRef.current}
+                        onOpen={setDropdownOpen}
+                        externallyOpen={dropdownOpen}
+                      menu={
+                      dropDownOptions.map((option, index) => (
+                            <DropdownMenuItem
+                                key={option.name}
+                                disabled={option.disabled}
+                                onClick={(event) => handleMenuItemClick(event, index)}
+                            >
+                              {option.name}
+                            </DropdownMenuItem>
+                        ))}
+                        />
+                    </ClickAwayListener>
+              }
             </>
         }
         {dnd &&
@@ -136,29 +126,35 @@ const stillDoNotDisturb = () => {
 }
 export const snackActions = {
   success(msg, options) {
-    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "success", ...options});
+    if(document.hidden){return}
+    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "success", onClick: this.dismiss, ...options});
   },
   warning(msg, options) {
+    if(document.hidden){return}
     if(stillDoNotDisturb()){
       return;
     }
-    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "warning", closeButton: CloseButton, ...options});
+    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "warning", onClick: this.dismiss, closeButton: CloseButton, ...options});
   },
   info(msg, options) {
+    if(document.hidden){return}
     if(stillDoNotDisturb()){
       return;
     }
-    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "info", closeButton: CloseButton, ...options});
+    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "info", onClick: this.dismiss, closeButton: CloseButton, ...options});
   },
   error(msg, options) {
-    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "error", ...options});
+    if(document.hidden){return}
+    toast(msg, {position: toast.POSITION.TOP_CENTER, type: "error", onClick: this.dismiss, ...options});
   },
   update(msg, toastID, options) {
+    if(document.hidden){return}
     if(toast.isActive){
       toast.update(toastID, {...options, render: msg});
     }    
   },
   loading(msg, options) {
+    if(document.hidden){return}
     toast.loading(msg,{position: toast.POSITION.TOP_CENTER, ...options})
   },
   dismiss(){
